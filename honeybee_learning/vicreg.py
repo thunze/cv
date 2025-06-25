@@ -138,6 +138,7 @@ def train_vicreg(*, log_to_wandb: bool = False) -> None:
         training_loss_epoch = 0  # Aggregate training loss for the epoch
 
         # Train for one epoch
+        # One pass through the training dataset
         for batch in train_dataloader:
             # `x0` and `x1` are two views of the same honeybee.
             x0, x1 = batch[0]  # TODO: This may need to be adjusted based on the dataset
@@ -165,6 +166,7 @@ def train_vicreg(*, log_to_wandb: bool = False) -> None:
         with torch.no_grad():
             validation_loss_epoch = 0  # Aggregate validation loss for the epoch
 
+            # One pass through the validation dataset
             for batch in validate_dataloader:
                 # `x0` and `x1` are two views of the same honeybee.
                 x0, x1 = batch[0]  # TODO: See above comment about dataset
