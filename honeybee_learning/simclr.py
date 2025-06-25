@@ -52,8 +52,8 @@ for epoch in range(10):
     total_loss = 0
     for batch in dataloader:
         x0, x1 = batch[0]
-        x0 = x0.to(device)
-        x1 = x1.to(device)
+        x0 = x0.to(device)  # Shape: torch.Size([256, 3, 32, 32])
+        x1 = x1.to(device)  # Shape: torch.Size([256, 3, 32, 32])
         z0 = model(x0)
         z1 = model(x1)
         loss = criterion(z0, z1)
