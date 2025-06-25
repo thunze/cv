@@ -6,6 +6,7 @@ from typing import Literal
 
 import torch
 import torchvision
+import wandb
 from lightly.data import LightlyDataset
 from lightly.loss import VICRegLoss
 from lightly.models.modules.heads import VICRegProjectionHead
@@ -15,12 +16,17 @@ from torch.utils.data import DataLoader, Dataset
 __all__ = ["train_vicreg"]
 
 
-# Configuration
+# Device configuration
 DEVICE = "cuda"  # We expect a GPU to be available.
 DATALOADER_NUM_WORKERS = 8  # Number of workers for the `DataLoader`
 
 
 # Hyperparameters
+
+## Training settings
+BATCH_SIZE = 2048  # Lightly example: 256
+LEARNING_RATE = 1.6  # Lightly example: 0.06
+EPOCHS = 1000  # Lightly example: 10
 
 ## Projection head configuration. See `VICRegProjectionHead` for more details.
 PROJECTION_HEAD_INPUT_DIM = 2048
@@ -28,10 +34,19 @@ PROJECTION_HEAD_HIDDEN_DIM = 8192
 PROJECTION_HEAD_OUTPUT_DIM = 8192
 PROJECTION_HEAD_NUM_LAYERS = 3
 
-## Training settings
-BATCH_SIZE = 2048  # Lightly example: 256
-LEARNING_RATE = 1.6  # Lightly example: 0.06
-EPOCHS = 1000  # Lightly example: 10
+
+# Weights & Biases (wandb) configuration
+WANDB_ENTITY = "thunze"  # Team name
+WANDB_PROJECT = "honeybee-learning"  # Project name
+WANDB_CONFIG = {  # Hyperparameters to log for the run
+    "batch_size": BATCH_SIZE,
+    "learning_rate": LEARNING_RATE,
+    "epochs": EPOCHS,
+    "projection_head_input_dim": PROJECTION_HEAD_INPUT_DIM,
+    "projection_head_hidden_dim": PROJECTION_HEAD_HIDDEN_DIM,
+    "projection_head_output_dim": PROJECTION_HEAD_OUTPUT_DIM,
+    "projection_head_num_layers": PROJECTION_HEAD_NUM_LAYERS,
+}
 
 
 class HoneybeeDataset(Dataset):  # Placeholder for now
@@ -76,7 +91,15 @@ def load_dataset(*, mode: Literal["train", "validate", "test"]) -> LightlyDatase
     return lightly_dataset
 
 
-def train_vicreg():
+def train_vicreg(*, log_to_wandb: bool = False) -> None:
+    # Initialize wandb run if enabled
+    if log_to_wandb:
+        wandb_run = wandb.init(
+            entity=WANDB_ENTITY, project=WANDB_PROJECT, config=WANDB_CONFIG
+        )
+    else:
+        wandb_run = None
+
     # Load training and validation data
     train_dataset = load_dataset(mode="train")
     validate_dataset = load_dataset(mode="validate")
@@ -164,9 +187,23 @@ def train_vicreg():
         avg_training_loss_epoch = training_loss_epoch / len(train_dataloader)
         avg_validation_loss_epoch = validation_loss_epoch / len(validate_dataloader)
 
-        # Logging
+        # Log to standard output
         print(
             f"epoch: {epoch:>02}, "
             f"training loss: {avg_training_loss_epoch:.5f}, "
             f"validation loss: {avg_validation_loss_epoch:.5f}"
         )
+
+        # Log to wandb if enabled
+        if wandb_run is not None:
+            wandb.log(
+                {
+                    "train/epoch": epoch,
+                    "train/loss": avg_training_loss_epoch,
+                    "validate/loss": avg_validation_loss_epoch,
+                }
+            )
+
+    # Finish wandb run if enabled
+    if wandb_run is not None:
+        wandb_run.finish()
