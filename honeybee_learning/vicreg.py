@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 import torch
 import torchvision
 from lightly.data import LightlyDataset
@@ -33,7 +35,8 @@ EPOCHS = 1000  # Lightly example: 10
 
 
 class HoneybeeDataset(Dataset):  # Placeholder for now
-    pass
+    def __init__(self, *, mode: Literal["train", "validate", "test"]):
+        super().__init__()
 
 
 class VICReg(nn.Module):
@@ -64,8 +67,8 @@ def build_model():
     return model
 
 
-def load_dataset():
-    torch_dataset = HoneybeeDataset()
+def load_dataset(*, mode: Literal["train", "validate", "test"]) -> LightlyDataset:
+    torch_dataset = HoneybeeDataset(mode=mode)
 
     # Lightly models require a `LightlyDataset`
     lightly_dataset = LightlyDataset.from_torch_dataset(torch_dataset)
@@ -74,13 +77,23 @@ def load_dataset():
 
 
 def train_vicreg():
-    # Load data
-    dataset = load_dataset()
-    dataloader = DataLoader(
-        dataset,
+    # Load training and validation data
+    train_dataset = load_dataset(mode="train")
+    validate_dataset = load_dataset(mode="validate")
+
+    # Create dataloaders
+    train_dataloader = DataLoader(
+        train_dataset,
         batch_size=BATCH_SIZE,
         shuffle=True,
-        drop_last=True,  # Drop the last batch if it's smaller than the batch size
+        drop_last=True,  # For stability, drop the last batch if it's < batch size
+        num_workers=DATALOADER_NUM_WORKERS,
+    )
+    validate_dataloader = DataLoader(
+        validate_dataset,
+        batch_size=BATCH_SIZE,
+        shuffle=True,
+        drop_last=True,  # For stability, drop the last batch if it's < batch size
         num_workers=DATALOADER_NUM_WORKERS,
     )
 
@@ -99,10 +112,10 @@ def train_vicreg():
 
     # Iterate over epochs
     for epoch in range(EPOCHS):
-        epoch_loss = 0  # Aggregate loss for the epoch
+        training_loss_epoch = 0  # Aggregate training loss for the epoch
 
-        # Iterate over the dataset
-        for batch in dataloader:
+        # Train for one epoch
+        for batch in train_dataloader:
             # `x0` and `x1` are two views of the same honeybee.
             x0, x1 = batch[0]  # TODO: This may need to be adjusted based on the dataset
 
@@ -116,13 +129,44 @@ def train_vicreg():
 
             # Compute training loss
             batch_loss = criterion(z0, z1)
-            epoch_loss += batch_loss.detach()
+            training_loss_epoch += batch_loss.detach()
 
             # Backpropagation and optimization
             batch_loss.backward()
             optimizer.step()
             optimizer.zero_grad()  # Zero the gradients for the next iteration
 
-        # Log the average loss for the epoch
-        avg_loss = epoch_loss / len(dataloader)
-        print(f"epoch: {epoch:>02}, loss: {avg_loss:.5f}")
+        model.eval()  # Set the model to evaluation mode
+
+        # Validate the model after one epoch of training
+        with torch.no_grad():
+            validation_loss_epoch = 0  # Aggregate validation loss for the epoch
+
+            for batch in validate_dataloader:
+                # `x0` and `x1` are two views of the same honeybee.
+                x0, x1 = batch[0]  # TODO: See above comment about dataset
+
+                # Move data to the target device
+                x0 = x0.to(DEVICE)
+                x1 = x1.to(DEVICE)
+
+                # Forward pass
+                z0 = model(x0)
+                z1 = model(x1)
+
+                # Compute validation loss
+                batch_loss = criterion(z0, z1)
+                validation_loss_epoch += batch_loss.detach()
+
+        model.train()  # Set the model back to training mode
+
+        # Compute average losses for the epoch
+        avg_training_loss_epoch = training_loss_epoch / len(train_dataloader)
+        avg_validation_loss_epoch = validation_loss_epoch / len(validate_dataloader)
+
+        # Logging
+        print(
+            f"epoch: {epoch:>02}, "
+            f"training loss: {avg_training_loss_epoch:.5f}, "
+            f"validation loss: {avg_validation_loss_epoch:.5f}"
+        )
