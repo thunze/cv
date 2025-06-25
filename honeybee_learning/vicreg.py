@@ -21,15 +21,15 @@ DATALOADER_NUM_WORKERS = 8  # Number of workers for the `DataLoader`
 # Hyperparameters
 
 ## Projection head configuration. See `VICRegProjectionHead` for more details.
-PROJECTION_HEAD_INPUT_DIM = 512
-PROJECTION_HEAD_HIDDEN_DIM = 2048
-PROJECTION_HEAD_OUTPUT_DIM = 2048
-PROJECTION_HEAD_NUM_LAYERS = 2
+PROJECTION_HEAD_INPUT_DIM = 2048
+PROJECTION_HEAD_HIDDEN_DIM = 8192
+PROJECTION_HEAD_OUTPUT_DIM = 8192
+PROJECTION_HEAD_NUM_LAYERS = 3
 
 ## Training settings
-BATCH_SIZE = 256
-LEARNING_RATE = 0.06
-EPOCHS = 10
+BATCH_SIZE = 2048  # Lightly example: 256
+LEARNING_RATE = 1.6  # Lightly example: 0.06
+EPOCHS = 1000  # Lightly example: 10
 
 
 class HoneybeeDataset(Dataset):  # Placeholder for now
@@ -54,7 +54,7 @@ class VICReg(nn.Module):
 
 
 def build_model():
-    resnet = torchvision.models.resnet18()
+    resnet = torchvision.models.resnet50()
 
     # Remove the last fully connected layer to use the model as a backbone
     backbone = nn.Sequential(*list(resnet.children())[:-1])
@@ -80,7 +80,7 @@ def train_vicreg():
         dataset,
         batch_size=BATCH_SIZE,
         shuffle=True,
-        drop_last=True,  # TODO: keep?
+        drop_last=True,  # Drop the last batch if it's smaller than the batch size
         num_workers=DATALOADER_NUM_WORKERS,
     )
 
