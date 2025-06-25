@@ -1,13 +1,39 @@
+"""VICReg model and training pipeline."""
+
+from __future__ import annotations
+
 import torch
 import torchvision
-
-## The projection head is the same as the Barlow Twins one
+from lightly.data import LightlyDataset
 from lightly.loss import VICRegLoss
-
-## The projection head is the same as the Barlow Twins one
 from lightly.models.modules.heads import VICRegProjectionHead
-from lightly.transforms.vicreg_transform import VICRegTransform
 from torch import nn
+from torch.utils.data import DataLoader, Dataset
+
+__all__ = ["train_vicreg"]
+
+
+# Configuration
+DEVICE = "cuda"  # We expect a GPU to be available.
+DATALOADER_NUM_WORKERS = 8  # Number of workers for the `DataLoader`
+
+
+# Hyperparameters
+
+## Projection head configuration. See `VICRegProjectionHead` for more details.
+PROJECTION_HEAD_INPUT_DIM = 512
+PROJECTION_HEAD_HIDDEN_DIM = 2048
+PROJECTION_HEAD_OUTPUT_DIM = 2048
+PROJECTION_HEAD_NUM_LAYERS = 2
+
+## Training settings
+BATCH_SIZE = 256
+LEARNING_RATE = 0.06
+EPOCHS = 10
+
+
+class HoneybeeDataset(Dataset):  # Placeholder for now
+    pass
 
 
 class VICReg(nn.Module):
@@ -15,55 +41,88 @@ class VICReg(nn.Module):
         super().__init__()
         self.backbone = backbone
         self.projection_head = VICRegProjectionHead(
-            input_dim=512,
-            hidden_dim=2048,
-            output_dim=2048,
-            num_layers=2,
+            input_dim=PROJECTION_HEAD_INPUT_DIM,
+            hidden_dim=PROJECTION_HEAD_HIDDEN_DIM,
+            output_dim=PROJECTION_HEAD_OUTPUT_DIM,
+            num_layers=PROJECTION_HEAD_NUM_LAYERS,
         )
 
     def forward(self, x):
-        x = self.backbone(x).flatten(start_dim=1)
+        x = self.backbone(x).flatten(start_dim=1)  # Don't flatten across batches
         z = self.projection_head(x)
         return z
 
 
-resnet = torchvision.models.resnet18()
-backbone = nn.Sequential(*list(resnet.children())[:-1])
-model = VICReg(backbone)
+def build_model():
+    resnet = torchvision.models.resnet18()
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
-model.to(device)
+    # Remove the last fully connected layer to use the model as a backbone
+    backbone = nn.Sequential(*list(resnet.children())[:-1])
 
-transform = VICRegTransform(input_size=32)
-dataset = torchvision.datasets.CIFAR10(
-    "datasets/cifar10", download=True, transform=transform
-)
-# or create a dataset from a folder containing images or videos:
-# dataset = LightlyDataset("path/to/folder", transform=transform)
+    # Create the VICReg model with the backbone
+    model = VICReg(backbone)
+    return model
 
-dataloader = torch.utils.data.DataLoader(
-    dataset,
-    batch_size=256,
-    shuffle=True,
-    drop_last=True,
-    num_workers=8,
-)
-criterion = VICRegLoss()
-optimizer = torch.optim.SGD(model.parameters(), lr=0.06)
 
-print("Starting Training")
-for epoch in range(10):
-    total_loss = 0
-    for batch in dataloader:
-        x0, x1 = batch[0]
-        x0 = x0.to(device)  # Shape: torch.Size([256, 3, 32, 32])
-        x1 = x1.to(device)  # Shape: torch.Size([256, 3, 32, 32])
-        z0 = model(x0)
-        z1 = model(x1)
-        loss = criterion(z0, z1)
-        total_loss += loss.detach()
-        loss.backward()
-        optimizer.step()
-        optimizer.zero_grad()
-    avg_loss = total_loss / len(dataloader)
-    print(f"epoch: {epoch:>02}, loss: {avg_loss:.5f}")
+def load_dataset():
+    torch_dataset = HoneybeeDataset()
+
+    # Lightly models require a `LightlyDataset`
+    lightly_dataset = LightlyDataset.from_torch_dataset(torch_dataset)
+
+    return lightly_dataset
+
+
+def train_vicreg():
+    # Load data
+    dataset = load_dataset()
+    dataloader = DataLoader(
+        dataset,
+        batch_size=BATCH_SIZE,
+        shuffle=True,
+        drop_last=True,  # TODO: keep?
+        num_workers=DATALOADER_NUM_WORKERS,
+    )
+
+    # Prepare model
+    model = build_model()
+    model = model.to(DEVICE)  # Move to target device
+
+    # Prepare training components
+    criterion = VICRegLoss()
+    optimizer = torch.optim.SGD(model.parameters(), lr=LEARNING_RATE)
+
+    # Train the model
+    print("Starting VICReg training...")
+    model.train()  # Set the model to training mode
+    model.zero_grad()  # Zero the gradients before training, just to be safe
+
+    # Iterate over epochs
+    for epoch in range(EPOCHS):
+        epoch_loss = 0  # Aggregate loss for the epoch
+
+        # Iterate over the dataset
+        for batch in dataloader:
+            # `x0` and `x1` are two views of the same honeybee.
+            x0, x1 = batch[0]  # TODO: This may need to be adjusted based on the dataset
+
+            # Move data to the target device
+            x0 = x0.to(DEVICE)
+            x1 = x1.to(DEVICE)
+
+            # Forward pass
+            z0 = model(x0)
+            z1 = model(x1)
+
+            # Compute training loss
+            batch_loss = criterion(z0, z1)
+            epoch_loss += batch_loss.detach()
+
+            # Backpropagation and optimization
+            batch_loss.backward()
+            optimizer.step()
+            optimizer.zero_grad()  # Zero the gradients for the next iteration
+
+        # Log the average loss for the epoch
+        avg_loss = epoch_loss / len(dataloader)
+        print(f"epoch: {epoch:>02}, loss: {avg_loss:.5f}")
