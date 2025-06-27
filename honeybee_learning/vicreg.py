@@ -99,10 +99,17 @@ class VICReg(nn.Module):
 
 
 def train_vicreg(*, log_to_wandb: bool = False) -> None:
+    # Prepare run name
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    run_name = f"vicreg_{timestamp}"
+
     # Initialize wandb run if enabled
     if log_to_wandb:
         wandb_run = wandb.init(
-            entity=WANDB_ENTITY, project=WANDB_PROJECT, config=WANDB_CONFIG
+            entity=WANDB_ENTITY,
+            project=WANDB_PROJECT,
+            name=run_name,
+            config=WANDB_CONFIG,
         )
     else:
         wandb_run = None
@@ -226,13 +233,11 @@ def train_vicreg(*, log_to_wandb: bool = False) -> None:
     # --- Finalization ---
 
     # Prepare saving model and hyperparameters
-    model_filename_suffix = datetime.now().strftime("%Y%m%d_%H%M%S")
-    model_filename_base = f"vicreg_{model_filename_suffix}"
     CHECKPOINTS_PATH.mkdir(parents=True, exist_ok=True)
 
     # Save trained model and serialized model hyperparameters
-    torch.save(model.state_dict(), CHECKPOINTS_PATH / f"{model_filename_base}.pth")
-    (CHECKPOINTS_PATH / f"{model_filename_base}.json").write_text(
+    torch.save(model.state_dict(), CHECKPOINTS_PATH / f"{run_name}.pth")
+    (CHECKPOINTS_PATH / f"{run_name}.json").write_text(
         json.dumps(ALL_HYPERPARAMETERS, indent=4, ensure_ascii=False)
     )
 
