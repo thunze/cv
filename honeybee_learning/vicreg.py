@@ -15,6 +15,7 @@ from lightly.loss import VICRegLoss
 from lightly.models.modules.heads import VICRegProjectionHead
 from lightly.utils.lars import LARS
 from torch import nn
+from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts, LinearLR, SequentialLR
 from torch.utils.data import DataLoader, Dataset
 
 __all__ = ["train_vicreg"]
@@ -45,6 +46,11 @@ _LARS_BASE_LEARNING_RATE = 0.2
 LARS_LEARNING_RATE = BATCH_SIZE / 256 * _LARS_BASE_LEARNING_RATE
 LARS_WEIGHT_DECAY = 1e-6
 
+## Learning rate scheduler parameters
+LR_SCHEDULER_WARMUP_EPOCHS = 10  # Number of warmup epochs
+LR_SCHEDULER_WARMUP_START_FACTOR = 0.1  # Start factor for learning rate during warmup
+LR_SCHEDULE_COSINE_ETA_MIN = 2e-3  # Minimum learning rate for cosine scheduler
+
 ## Projection head configuration. See `VICRegProjectionHead` for more details.
 PROJECTION_HEAD_INPUT_DIM = 2048
 PROJECTION_HEAD_HIDDEN_DIM = 8192
@@ -62,6 +68,9 @@ ALL_HYPERPARAMETERS = {
     "_lars_base_learning_rate": _LARS_BASE_LEARNING_RATE,
     "lars_learning_rate": LARS_LEARNING_RATE,
     "lars_weight_decay": LARS_WEIGHT_DECAY,
+    "lr_scheduler_warmup_epochs": LR_SCHEDULER_WARMUP_EPOCHS,
+    "lr_scheduler_warmup_start_factor": LR_SCHEDULER_WARMUP_START_FACTOR,
+    "lr_schedule_cosine_eta_min": LR_SCHEDULE_COSINE_ETA_MIN,
     "projection_head_input_dim": PROJECTION_HEAD_INPUT_DIM,
     "projection_head_hidden_dim": PROJECTION_HEAD_HIDDEN_DIM,
     "projection_head_output_dim": PROJECTION_HEAD_OUTPUT_DIM,
@@ -147,7 +156,7 @@ def train_vicreg(*, log_to_wandb: bool = False) -> None:
     model = VICReg()
     model = model.to(DEVICE)  # Move model to target device
 
-    # Prepare training components
+    # Prepare loss and optimizer
     criterion = VICRegLoss(
         lambda_param=VICREG_LOSS_LAMBDA,
         mu_param=VICREG_LOSS_MU,
@@ -157,6 +166,26 @@ def train_vicreg(*, log_to_wandb: bool = False) -> None:
         model.parameters(),
         lr=LARS_LEARNING_RATE,
         weight_decay=LARS_WEIGHT_DECAY,
+    )
+
+    # Prepare learning rate scheduler
+    # First linear warmup, then switch to cosine annealing
+    warmup_iterations = LR_SCHEDULER_WARMUP_EPOCHS * len(train_dataloader)
+    warmup_scheduler = LinearLR(
+        optimizer,
+        start_factor=LR_SCHEDULER_WARMUP_START_FACTOR,
+        end_factor=1.0,
+        total_iters=warmup_iterations,
+    )
+    cosine_scheduler = CosineAnnealingWarmRestarts(
+        optimizer,
+        T_0=0,  # We delay the scheduler separately using `SequentialLR`
+        eta_min=LR_SCHEDULE_COSINE_ETA_MIN,
+    )
+    scheduler = SequentialLR(
+        optimizer,
+        schedulers=[warmup_scheduler, cosine_scheduler],
+        milestones=[warmup_iterations],  # After warmup, switch to cosine annealing
     )
 
     # Train the model
@@ -188,8 +217,9 @@ def train_vicreg(*, log_to_wandb: bool = False) -> None:
 
             # Backpropagation and optimization
             batch_loss.backward()
-            optimizer.step()
+            optimizer.step()  # Update model parameters
             optimizer.zero_grad()  # Zero the gradients for the next iteration
+            scheduler.step()  # Update learning rate
 
         model.eval()  # Set the model to evaluation mode
 
@@ -232,6 +262,7 @@ def train_vicreg(*, log_to_wandb: bool = False) -> None:
             wandb.log(
                 {
                     "train/epoch": epoch,
+                    "train/learning_rate": optimizer.param_groups[0]["lr"],
                     "train/loss": avg_training_loss_epoch,
                     "validate/loss": avg_validation_loss_epoch,
                 }
