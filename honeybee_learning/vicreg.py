@@ -5,20 +5,18 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Literal
 
 import torch
 import torchvision
 import wandb
-from lightly.data import LightlyDataset
 from lightly.loss import VICRegLoss
 from lightly.models.modules.heads import VICRegProjectionHead
 from lightly.models.utils import get_weight_decay_parameters
 from lightly.utils.lars import LARS
 from lightly.utils.scheduler import CosineWarmupScheduler
 from torch import nn
-from torch.utils.data import DataLoader, Dataset
 
+from .dataset import get_dataloader
 from .validate import validate_epoch_validation_loss
 
 __all__ = ["train_vicreg"]
@@ -30,7 +28,6 @@ CHECKPOINTS_PATH = Path("./checkpoints")  # Path to save checkpoints to
 
 # Device configuration
 DEVICE = "cuda"  # We expect a GPU to be available.
-DATALOADER_NUM_WORKERS = 8  # Number of workers for the `DataLoader`
 
 
 # Hyperparameters
@@ -87,11 +84,6 @@ WANDB_PROJECT = "honeybee-learning"  # Project name
 WANDB_CONFIG = ALL_HYPERPARAMETERS
 
 
-class HoneybeeDataset(Dataset):  # Placeholder for now
-    def __init__(self, *, mode: Literal["train", "validate", "test"]):
-        super().__init__()
-
-
 class VICReg(nn.Module):
     def __init__(self):
         super().__init__()
@@ -117,15 +109,6 @@ class VICReg(nn.Module):
         return z
 
 
-def load_dataset(*, mode: Literal["train", "validate", "test"]) -> LightlyDataset:
-    torch_dataset = HoneybeeDataset(mode=mode)
-
-    # Lightly models require a `LightlyDataset`
-    lightly_dataset = LightlyDataset.from_torch_dataset(torch_dataset)
-
-    return lightly_dataset
-
-
 def train_vicreg(*, log_to_wandb: bool = False) -> None:
     # Initialize wandb run if enabled
     if log_to_wandb:
@@ -136,24 +119,8 @@ def train_vicreg(*, log_to_wandb: bool = False) -> None:
         wandb_run = None
 
     # Load training and validation data
-    train_dataset = load_dataset(mode="train")
-    validate_dataset = load_dataset(mode="validate")
-
-    # Create dataloaders
-    train_dataloader = DataLoader(
-        train_dataset,
-        batch_size=BATCH_SIZE,
-        shuffle=True,
-        drop_last=True,  # For stability, drop the last batch if it's < batch size
-        num_workers=DATALOADER_NUM_WORKERS,
-    )
-    validate_dataloader = DataLoader(
-        validate_dataset,
-        batch_size=BATCH_SIZE,
-        shuffle=False,  # No need to shuffle validation data
-        drop_last=True,  # For stability, drop the last batch if it's < batch size
-        num_workers=DATALOADER_NUM_WORKERS,
-    )
+    train_dataloader = get_dataloader(mode="train", batch_size=BATCH_SIZE)
+    validate_dataloader = get_dataloader(mode="validate", batch_size=BATCH_SIZE)
 
     # Prepare model
     model = VICReg()
