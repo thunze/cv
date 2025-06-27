@@ -124,7 +124,7 @@ def train_vicreg(*, log_to_wandb: bool = False) -> None:
 
     # Prepare model
     model = build_model()
-    model = model.to(DEVICE)  # Move to target device
+    model = model.to(DEVICE)  # Move model to target device
 
     # Prepare training components
     criterion = VICRegLoss()
@@ -145,7 +145,7 @@ def train_vicreg(*, log_to_wandb: bool = False) -> None:
             # `x0` and `x1` are two views of the same honeybee.
             x0, x1 = batch[0]  # TODO: This may need to be adjusted based on the dataset
 
-            # Move data to the target device
+            # Move data to target device
             x0 = x0.to(DEVICE)
             x1 = x1.to(DEVICE)
 
@@ -173,7 +173,7 @@ def train_vicreg(*, log_to_wandb: bool = False) -> None:
                 # `x0` and `x1` are two views of the same honeybee.
                 x0, x1 = batch[0]  # TODO: See above comment about dataset
 
-                # Move data to the target device
+                # Move data to target device
                 x0 = x0.to(DEVICE)
                 x1 = x1.to(DEVICE)
 
