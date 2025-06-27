@@ -15,8 +15,8 @@ from lightly.loss import VICRegLoss
 from lightly.models.modules.heads import VICRegProjectionHead
 from lightly.models.utils import get_weight_decay_parameters
 from lightly.utils.lars import LARS
+from lightly.utils.scheduler import CosineWarmupScheduler
 from torch import nn
-from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts, LinearLR, SequentialLR
 from torch.utils.data import DataLoader, Dataset
 
 __all__ = ["train_vicreg"]
@@ -50,8 +50,7 @@ LARS_WEIGHT_DECAY = 1e-6
 
 ## Learning rate scheduler parameters
 LR_SCHEDULER_WARMUP_EPOCHS = 10  # Number of warmup epochs
-LR_SCHEDULER_WARMUP_START_FACTOR = 0.1  # Start factor for learning rate during warmup
-LR_SCHEDULE_COSINE_ETA_MIN = 2e-3  # Minimum learning rate for cosine scheduler
+LR_SCHEDULE_COSINE_MIN = 1e-2  # Minimum cosine LR factor, scales from 0.002 to 0.2
 
 ## Projection head configuration. See `VICRegProjectionHead` for more details.
 PROJECTION_HEAD_INPUT_DIM = 2048
@@ -72,8 +71,7 @@ ALL_HYPERPARAMETERS = {
     "lars_momentum": LARS_MOMENTUM,
     "lars_weight_decay": LARS_WEIGHT_DECAY,
     "lr_scheduler_warmup_epochs": LR_SCHEDULER_WARMUP_EPOCHS,
-    "lr_scheduler_warmup_start_factor": LR_SCHEDULER_WARMUP_START_FACTOR,
-    "lr_schedule_cosine_eta_min": LR_SCHEDULE_COSINE_ETA_MIN,
+    "lr_schedule_cosine_min": LR_SCHEDULE_COSINE_MIN,
     "projection_head_input_dim": PROJECTION_HEAD_INPUT_DIM,
     "projection_head_hidden_dim": PROJECTION_HEAD_HIDDEN_DIM,
     "projection_head_output_dim": PROJECTION_HEAD_OUTPUT_DIM,
@@ -187,23 +185,14 @@ def train_vicreg(*, log_to_wandb: bool = False) -> None:
     )
 
     # Prepare learning rate scheduler
-    # First linear warmup, then switch to cosine annealing
     warmup_iterations = LR_SCHEDULER_WARMUP_EPOCHS * len(train_dataloader)
-    warmup_scheduler = LinearLR(
+    total_iterations = EPOCHS * len(train_dataloader)
+    scheduler = CosineWarmupScheduler(
         optimizer,
-        start_factor=LR_SCHEDULER_WARMUP_START_FACTOR,
-        end_factor=1.0,
-        total_iters=warmup_iterations,
-    )
-    cosine_scheduler = CosineAnnealingWarmRestarts(
-        optimizer,
-        T_0=0,  # We delay the scheduler separately using `SequentialLR`
-        eta_min=LR_SCHEDULE_COSINE_ETA_MIN,
-    )
-    scheduler = SequentialLR(
-        optimizer,
-        schedulers=[warmup_scheduler, cosine_scheduler],
-        milestones=[warmup_iterations],  # After warmup, switch to cosine annealing
+        warmup_epochs=warmup_iterations,  # Number of warmup training steps (not epochs)
+        max_epochs=total_iterations,  # Total number of training steps (not epochs)
+        start_value=1.0,  # Maximum cosine learning rate factor
+        end_value=LR_SCHEDULE_COSINE_MIN,  # Minimum cosine learning rate factor
     )
 
     # Train the model
