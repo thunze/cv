@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from pathlib import Path
 
 import torch
 import torchvision
@@ -16,18 +15,11 @@ from lightly.utils.lars import LARS
 from lightly.utils.scheduler import CosineWarmupScheduler
 from torch import nn
 
+from .config import CHECKPOINTS_PATH, DEVICE, WANDB_ENTITY, WANDB_PROJECT
 from .dataset import get_dataloader
 from .validate import validate_epoch_validation_loss
 
 __all__ = ["train_vicreg"]
-
-
-# Paths
-CHECKPOINTS_PATH = Path("./checkpoints")  # Path to save checkpoints to
-
-
-# Device configuration
-DEVICE = "cuda"  # We expect a GPU to be available.
 
 
 # Hyperparameters
@@ -78,9 +70,6 @@ ALL_HYPERPARAMETERS = {
 }
 
 
-# Weights & Biases (wandb) configuration
-WANDB_ENTITY = "thunze"  # Team name
-WANDB_PROJECT = "honeybee-learning"  # Project name
 WANDB_CONFIG = ALL_HYPERPARAMETERS
 
 

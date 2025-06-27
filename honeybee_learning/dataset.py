@@ -7,10 +7,9 @@ from typing import Literal
 from lightly.data import LightlyDataset
 from torch.utils.data import DataLoader, Dataset
 
+from .config import DATALOADER_NUM_WORKERS
+
 __all__ = ["HoneybeeDataset", "get_dataset", "get_dataloader"]
-
-
-DATALOADER_NUM_WORKERS = 8  # Number of processes used by `DataLoader` instances
 
 
 class HoneybeeDataset(Dataset):  # Placeholder for now
