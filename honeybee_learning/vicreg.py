@@ -44,6 +44,7 @@ VICREG_LOSS_NU = 1  # Invariance loss weight
 ## Optimizer parameters
 _LARS_BASE_LEARNING_RATE = 0.2
 LARS_LEARNING_RATE = BATCH_SIZE / 256 * _LARS_BASE_LEARNING_RATE
+LARS_MOMENTUM = 0.9
 LARS_WEIGHT_DECAY = 1e-6
 
 ## Learning rate scheduler parameters
@@ -67,6 +68,7 @@ ALL_HYPERPARAMETERS = {
     "vicreg_loss_nu": VICREG_LOSS_NU,
     "_lars_base_learning_rate": _LARS_BASE_LEARNING_RATE,
     "lars_learning_rate": LARS_LEARNING_RATE,
+    "lars_momentum": LARS_MOMENTUM,
     "lars_weight_decay": LARS_WEIGHT_DECAY,
     "lr_scheduler_warmup_epochs": LR_SCHEDULER_WARMUP_EPOCHS,
     "lr_scheduler_warmup_start_factor": LR_SCHEDULER_WARMUP_START_FACTOR,
@@ -165,6 +167,7 @@ def train_vicreg(*, log_to_wandb: bool = False) -> None:
     optimizer = LARS(
         model.parameters(),
         lr=LARS_LEARNING_RATE,
+        momentum=LARS_MOMENTUM,
         weight_decay=LARS_WEIGHT_DECAY,
     )
 
