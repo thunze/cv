@@ -35,17 +35,26 @@ BATCH_SIZE = 2048  # Lightly example: 256
 LEARNING_RATE = 1.6  # Lightly example: 0.06
 EPOCHS = 1000  # Lightly example: 10
 
+## Loss parameters
+VICREG_LOSS_LAMBDA = 25  # Variance loss weight
+VICREG_LOSS_MU = 25  # Covariance loss weight
+VICREG_LOSS_NU = 1  # Invariance loss weight
+
 ## Projection head configuration. See `VICRegProjectionHead` for more details.
 PROJECTION_HEAD_INPUT_DIM = 2048
 PROJECTION_HEAD_HIDDEN_DIM = 8192
 PROJECTION_HEAD_OUTPUT_DIM = 8192
 PROJECTION_HEAD_NUM_LAYERS = 3
 
-## Hyperparameters to log for the run
+
+# Hyperparameters to log for the run
 ALL_HYPERPARAMETERS = {
     "batch_size": BATCH_SIZE,
     "learning_rate": LEARNING_RATE,
     "epochs": EPOCHS,
+    "vicreg_loss_lambda": VICREG_LOSS_LAMBDA,
+    "vicreg_loss_mu": VICREG_LOSS_MU,
+    "vicreg_loss_nu": VICREG_LOSS_NU,
     "projection_head_input_dim": PROJECTION_HEAD_INPUT_DIM,
     "projection_head_hidden_dim": PROJECTION_HEAD_HIDDEN_DIM,
     "projection_head_output_dim": PROJECTION_HEAD_OUTPUT_DIM,
@@ -132,7 +141,7 @@ def train_vicreg(*, log_to_wandb: bool = False) -> None:
     model = model.to(DEVICE)  # Move model to target device
 
     # Prepare training components
-    criterion = VICRegLoss()
+    criterion = VICRegLoss(VICREG_LOSS_LAMBDA, VICREG_LOSS_MU, VICREG_LOSS_NU)
     optimizer = torch.optim.SGD(model.parameters(), lr=LEARNING_RATE)
 
     # Train the model
