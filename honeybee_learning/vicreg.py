@@ -225,7 +225,7 @@ def train_vicreg(*, log_to_wandb: bool = False) -> None:
 
         # Log to wandb if enabled
         if wandb_run is not None:
-            wandb.log(
+            wandb_run.log(
                 {
                     "train/epoch": epoch,
                     "train/learning_rate": optimizer.param_groups[0]["lr"],
