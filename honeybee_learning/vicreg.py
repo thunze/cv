@@ -57,6 +57,7 @@ class HoneybeeDataset(Dataset):  # Placeholder for now
 class VICReg(nn.Module):
     def __init__(self, backbone):
         super().__init__()
+        self.resize = torchvision.transforms.Resize((224, 224))
         self.backbone = backbone
         self.projection_head = VICRegProjectionHead(
             input_dim=PROJECTION_HEAD_INPUT_DIM,
@@ -66,8 +67,9 @@ class VICReg(nn.Module):
         )
 
     def forward(self, x):
-        x = self.backbone(x).flatten(start_dim=1)  # Don't flatten across batches
-        z = self.projection_head(x)
+        x_r = self.resize(x)  # Resize input to match ResNet50 input size
+        h = self.backbone(x_r).flatten(start_dim=1)  # Don't flatten across batches
+        z = self.projection_head(h)
         return z
 
 
