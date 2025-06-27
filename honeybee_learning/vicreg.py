@@ -2,12 +2,7 @@
 
 from __future__ import annotations
 
-import json
-from datetime import datetime
-
-import torch
 import torchvision
-import wandb
 from lightly.loss import VICRegLoss
 from lightly.models.modules.heads import VICRegProjectionHead
 from lightly.models.utils import get_weight_decay_parameters
@@ -15,9 +10,9 @@ from lightly.utils.lars import LARS
 from lightly.utils.scheduler import CosineWarmupScheduler
 from torch import nn
 
-from .config import CHECKPOINTS_PATH, DEVICE, WANDB_ENTITY, WANDB_PROJECT
+from .config import DEVICE
 from .dataset import get_dataloader
-from .validate import validate_epoch_validation_loss
+from .train import train
 
 __all__ = ["train_vicreg"]
 
@@ -70,9 +65,6 @@ ALL_HYPERPARAMETERS = {
 }
 
 
-WANDB_CONFIG = ALL_HYPERPARAMETERS
-
-
 class VICReg(nn.Module):
     def __init__(self):
         super().__init__()
@@ -99,21 +91,6 @@ class VICReg(nn.Module):
 
 
 def train_vicreg(*, log_to_wandb: bool = False) -> None:
-    # Prepare run name
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    run_name = f"vicreg_{timestamp}"
-
-    # Initialize wandb run if enabled
-    if log_to_wandb:
-        wandb_run = wandb.init(
-            entity=WANDB_ENTITY,
-            project=WANDB_PROJECT,
-            name=run_name,
-            config=WANDB_CONFIG,
-        )
-    else:
-        wandb_run = None
-
     # Load training and validation data
     train_dataloader = get_dataloader(mode="train", batch_size=BATCH_SIZE)
     validate_dataloader = get_dataloader(mode="validate", batch_size=BATCH_SIZE)
@@ -122,22 +99,21 @@ def train_vicreg(*, log_to_wandb: bool = False) -> None:
     model = VICReg()
     model = model.to(DEVICE)  # Move model to target device
 
-    # Prepare loss and optimizer
-    # For performance reasons, don't apply weight decay to norm and bias parameters.
-    params_weight_decay, params_no_weight_decay = get_weight_decay_parameters(
-        [model.backbone, model.projection_head]
-    )
+    # Prepare loss function
     criterion = VICRegLoss(
         lambda_param=VICREG_LOSS_LAMBDA,
         mu_param=VICREG_LOSS_MU,
         nu_param=VICREG_LOSS_NU,
     )
+
+    # Prepare optimizer
+    # For performance reasons, don't apply weight decay to norm and bias parameters.
+    params_weight_decay, params_no_weight_decay = get_weight_decay_parameters(
+        [model.backbone, model.projection_head]
+    )
     optimizer = LARS(
         [
-            {
-                "name": "vicreg_weight_decay",
-                "params": params_weight_decay,
-            },
+            {"name": "vicreg_weight_decay", "params": params_weight_decay},
             {
                 "name": "vicreg_no_weight_decay",
                 "params": params_no_weight_decay,
@@ -161,86 +137,14 @@ def train_vicreg(*, log_to_wandb: bool = False) -> None:
     )
 
     # Train the model
-    print("Starting VICReg training...")
-    model.train()  # Set the model to training mode
-    model.zero_grad()  # Zero the gradients before training, just to be safe
-
-    # Iterate over epochs
-    for epoch in range(EPOCHS):
-        training_loss_epoch = 0  # Aggregate training loss for the epoch
-
-        # --- Training ---
-
-        # Train for one epoch
-        # One pass through the training dataset
-        for batch in train_dataloader:
-            # `x0` and `x1` are two views of the same honeybee.
-            x0, x1 = batch[0]  # TODO: This may need to be adjusted based on the dataset
-
-            # Move data to target device
-            x0 = x0.to(DEVICE)
-            x1 = x1.to(DEVICE)
-
-            # Forward pass
-            z0 = model(x0)
-            z1 = model(x1)
-
-            # Compute training loss
-            batch_loss = criterion(z0, z1)
-            training_loss_epoch += batch_loss.detach()
-
-            # Backpropagation and optimization
-            batch_loss.backward()
-            optimizer.step()  # Update model parameters
-            optimizer.zero_grad()  # Zero the gradients for the next iteration
-            scheduler.step()  # Update learning rate
-
-        # Compute average training loss for the epoch
-        avg_training_loss_epoch = training_loss_epoch / len(train_dataloader)
-
-        # --- Validation ---
-
-        model.eval()  # Set the model to evaluation mode
-
-        # Validate the model after one epoch of training
-        with torch.no_grad():
-            avg_validation_loss_epoch = validate_epoch_validation_loss(
-                model, validate_dataloader, criterion, DEVICE
-            )
-
-        model.train()  # Set the model back to training mode
-
-        # --- Logging ---
-
-        # Log to standard output
-        print(
-            f"epoch: {epoch:>02}, "
-            f"training loss: {avg_training_loss_epoch:.5f}, "
-            f"validation loss: {avg_validation_loss_epoch:.5f}"
-        )
-
-        # Log to wandb if enabled
-        if wandb_run is not None:
-            wandb_run.log(
-                {
-                    "train/epoch": epoch,
-                    "train/learning_rate": optimizer.param_groups[0]["lr"],
-                    "train/loss": avg_training_loss_epoch,
-                    "validate/loss": avg_validation_loss_epoch,
-                }
-            )
-
-    # --- Finalization ---
-
-    # Prepare saving model and hyperparameters
-    CHECKPOINTS_PATH.mkdir(parents=True, exist_ok=True)
-
-    # Save trained model and serialized model hyperparameters
-    torch.save(model.state_dict(), CHECKPOINTS_PATH / f"{run_name}.pth")
-    (CHECKPOINTS_PATH / f"{run_name}.json").write_text(
-        json.dumps(ALL_HYPERPARAMETERS, indent=4, ensure_ascii=False)
+    train(
+        model=model,
+        train_dataloader=train_dataloader,
+        validate_dataloader=validate_dataloader,
+        criterion=criterion,
+        optimizer=optimizer,
+        scheduler=scheduler,
+        epochs=EPOCHS,
+        all_hyperparameters=ALL_HYPERPARAMETERS,
+        log_to_wandb=log_to_wandb,
     )
-
-    # Finish wandb run if enabled
-    if wandb_run is not None:
-        wandb_run.finish()
