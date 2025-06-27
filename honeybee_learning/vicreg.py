@@ -13,6 +13,7 @@ import wandb
 from lightly.data import LightlyDataset
 from lightly.loss import VICRegLoss
 from lightly.models.modules.heads import VICRegProjectionHead
+from lightly.models.utils import get_weight_decay_parameters
 from lightly.utils.lars import LARS
 from torch import nn
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts, LinearLR, SequentialLR
@@ -159,13 +160,27 @@ def train_vicreg(*, log_to_wandb: bool = False) -> None:
     model = model.to(DEVICE)  # Move model to target device
 
     # Prepare loss and optimizer
+    # For performance reasons, don't apply weight decay to norm and bias parameters.
+    params_weight_decay, params_no_weight_decay = get_weight_decay_parameters(
+        [model.backbone, model.projection_head]
+    )
     criterion = VICRegLoss(
         lambda_param=VICREG_LOSS_LAMBDA,
         mu_param=VICREG_LOSS_MU,
         nu_param=VICREG_LOSS_NU,
     )
     optimizer = LARS(
-        model.parameters(),
+        [
+            {
+                "name": "vicreg_weight_decay",
+                "params": params_weight_decay,
+            },
+            {
+                "name": "vicreg_no_weight_decay",
+                "params": params_no_weight_decay,
+                "weight_decay": 0.0,
+            },
+        ],
         lr=LARS_LEARNING_RATE,
         momentum=LARS_MOMENTUM,
         weight_decay=LARS_WEIGHT_DECAY,
