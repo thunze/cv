@@ -150,7 +150,7 @@ def train_vicreg(*, log_to_wandb: bool = False) -> None:
     validate_dataloader = DataLoader(
         validate_dataset,
         batch_size=BATCH_SIZE,
-        shuffle=True,
+        shuffle=False,  # No need to shuffle validation data
         drop_last=True,  # For stability, drop the last batch if it's < batch size
         num_workers=DATALOADER_NUM_WORKERS,
     )
