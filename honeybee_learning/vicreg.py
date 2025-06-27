@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from pathlib import Path
 from typing import Literal
 
@@ -213,8 +214,8 @@ def train_vicreg(*, log_to_wandb: bool = False) -> None:
             )
 
     # Prepare saving model and hyperparameters
-    joined_hyperparams = "_".join(str(value) for value in ALL_HYPERPARAMETERS.values())
-    model_filename_base = f"vicreg_{joined_hyperparams}"
+    model_filename_suffix = datetime.now().strftime("%Y%m%d_%H%M%S")
+    model_filename_base = f"vicreg_{model_filename_suffix}"
     CHECKPOINTS_PATH.mkdir(parents=True, exist_ok=True)
 
     # Save trained model and serialized model hyperparameters
