@@ -19,6 +19,8 @@ from lightly.utils.scheduler import CosineWarmupScheduler
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
+from .validate import validate_epoch_validation_loss
+
 __all__ = ["train_vicreg"]
 
 
@@ -204,6 +206,8 @@ def train_vicreg(*, log_to_wandb: bool = False) -> None:
     for epoch in range(EPOCHS):
         training_loss_epoch = 0  # Aggregate training loss for the epoch
 
+        # --- Training ---
+
         # Train for one epoch
         # One pass through the training dataset
         for batch in train_dataloader:
@@ -228,34 +232,22 @@ def train_vicreg(*, log_to_wandb: bool = False) -> None:
             optimizer.zero_grad()  # Zero the gradients for the next iteration
             scheduler.step()  # Update learning rate
 
+        # Compute average training loss for the epoch
+        avg_training_loss_epoch = training_loss_epoch / len(train_dataloader)
+
+        # --- Validation ---
+
         model.eval()  # Set the model to evaluation mode
 
         # Validate the model after one epoch of training
         with torch.no_grad():
-            validation_loss_epoch = 0  # Aggregate validation loss for the epoch
-
-            # One pass through the validation dataset
-            for batch in validate_dataloader:
-                # `x0` and `x1` are two views of the same honeybee.
-                x0, x1 = batch[0]  # TODO: See above comment about dataset
-
-                # Move data to target device
-                x0 = x0.to(DEVICE)
-                x1 = x1.to(DEVICE)
-
-                # Forward pass
-                z0 = model(x0)
-                z1 = model(x1)
-
-                # Compute validation loss
-                batch_loss = criterion(z0, z1)
-                validation_loss_epoch += batch_loss.detach()
+            avg_validation_loss_epoch = validate_epoch_validation_loss(
+                model, validate_dataloader, criterion, DEVICE
+            )
 
         model.train()  # Set the model back to training mode
 
-        # Compute average losses for the epoch
-        avg_training_loss_epoch = training_loss_epoch / len(train_dataloader)
-        avg_validation_loss_epoch = validation_loss_epoch / len(validate_dataloader)
+        # --- Logging ---
 
         # Log to standard output
         print(
@@ -274,6 +266,8 @@ def train_vicreg(*, log_to_wandb: bool = False) -> None:
                     "validate/loss": avg_validation_loss_epoch,
                 }
             )
+
+    # --- Finalization ---
 
     # Prepare saving model and hyperparameters
     model_filename_suffix = datetime.now().strftime("%Y%m%d_%H%M%S")
