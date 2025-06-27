@@ -101,7 +101,7 @@ def train(
         # Validate the model after one epoch of training
         with torch.no_grad():
             avg_validation_loss_epoch = validate_epoch_validation_loss(
-                model, validate_dataloader, criterion, DEVICE
+                model, validate_dataloader, criterion
             )
 
         model.train()  # Set the model back to training mode

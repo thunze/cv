@@ -6,6 +6,8 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
+from .config import DEVICE
+
 __all__ = ["validate_epoch_validation_loss"]
 
 
@@ -13,7 +15,6 @@ def validate_epoch_validation_loss(
     model,
     validate_dataloader: DataLoader,
     criterion: nn.Module,
-    device: str,
 ) -> float:
     """Validate `model` for one epoch on data provided by `validate_dataloader` using
     `criterion` to compute the validation loss.
@@ -22,7 +23,6 @@ def validate_epoch_validation_loss(
         model: Model to validate.
         validate_dataloader: `DataLoader` providing the validation dataset.
         criterion: Loss function to compute the validation loss.
-        device: Device to run the validation on (e.g., 'cuda' or 'cpu').
 
     Returns:
         Average validation loss for the epoch.
@@ -37,8 +37,8 @@ def validate_epoch_validation_loss(
         x0, x1 = batch[0]
 
         # Move data to target device
-        x0 = x0.to(device)
-        x1 = x1.to(device)
+        x0 = x0.to(DEVICE)
+        x1 = x1.to(DEVICE)
 
         # Forward pass
         z0 = model(x0)
