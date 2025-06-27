@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Literal
 
 import torch
@@ -14,6 +16,10 @@ from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
 __all__ = ["train_vicreg"]
+
+
+# Paths
+CHECKPOINTS_PATH = Path("./checkpoints")  # Path to save checkpoints to
 
 
 # Device configuration
@@ -34,11 +40,8 @@ PROJECTION_HEAD_HIDDEN_DIM = 8192
 PROJECTION_HEAD_OUTPUT_DIM = 8192
 PROJECTION_HEAD_NUM_LAYERS = 3
 
-
-# Weights & Biases (wandb) configuration
-WANDB_ENTITY = "thunze"  # Team name
-WANDB_PROJECT = "honeybee-learning"  # Project name
-WANDB_CONFIG = {  # Hyperparameters to log for the run
+## Hyperparameters to log for the run
+ALL_HYPERPARAMETERS = {
     "batch_size": BATCH_SIZE,
     "learning_rate": LEARNING_RATE,
     "epochs": EPOCHS,
@@ -47,6 +50,12 @@ WANDB_CONFIG = {  # Hyperparameters to log for the run
     "projection_head_output_dim": PROJECTION_HEAD_OUTPUT_DIM,
     "projection_head_num_layers": PROJECTION_HEAD_NUM_LAYERS,
 }
+
+
+# Weights & Biases (wandb) configuration
+WANDB_ENTITY = "thunze"  # Team name
+WANDB_PROJECT = "honeybee-learning"  # Project name
+WANDB_CONFIG = ALL_HYPERPARAMETERS
 
 
 class HoneybeeDataset(Dataset):  # Placeholder for now
@@ -207,6 +216,17 @@ def train_vicreg(*, log_to_wandb: bool = False) -> None:
                     "validate/loss": avg_validation_loss_epoch,
                 }
             )
+
+    # Prepare saving model and hyperparameters
+    joined_hyperparams = "_".join(str(value) for value in ALL_HYPERPARAMETERS.values())
+    model_filename_base = f"vicreg_{joined_hyperparams}"
+    CHECKPOINTS_PATH.mkdir(parents=True, exist_ok=True)
+
+    # Save trained model and serialized model hyperparameters
+    torch.save(model.state_dict(), CHECKPOINTS_PATH / f"{model_filename_base}.pth")
+    (CHECKPOINTS_PATH / f"{model_filename_base}.json").write_text(
+        json.dumps(ALL_HYPERPARAMETERS, indent=4, ensure_ascii=False)
+    )
 
     # Finish wandb run if enabled
     if wandb_run is not None:
