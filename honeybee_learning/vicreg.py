@@ -66,6 +66,8 @@ ALL_HYPERPARAMETERS = {
 
 
 class VICReg(nn.Module):
+    """VICReg model with ResNet backbone and projection head."""
+
     def __init__(self):
         super().__init__()
 
@@ -84,6 +86,7 @@ class VICReg(nn.Module):
         )
 
     def forward(self, x):
+        """Forward pass through the model."""
         x_r = self.resize(x)
         h = self.backbone(x_r).flatten(start_dim=1)  # Don't flatten across batches
         z = self.projection_head(h)
@@ -91,6 +94,11 @@ class VICReg(nn.Module):
 
 
 def train_vicreg(*, log_to_wandb: bool = False) -> None:
+    """Train the VICReg model on the honeybee dataset.
+
+    Args:
+        log_to_wandb: Whether to log training progress to Weights & Biases (wandb).
+    """
     # Load training and validation data
     train_dataloader = get_dataloader(mode="train", batch_size=BATCH_SIZE)
     validate_dataloader = get_dataloader(mode="validate", batch_size=BATCH_SIZE)
