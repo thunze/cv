@@ -5,10 +5,17 @@ from __future__ import annotations
 from pathlib import Path
 
 __all__ = [
+    "TOTAL_NUMBER_OF_BEES",
     "DEVICE",
     "DATALOADER_NUM_WORKERS",
     "CHECKPOINTS_PATH",
+    "WANDB_ENTITY",
+    "WANDB_PROJECT",
 ]
+
+
+# Data
+TOTAL_NUMBER_OF_BEES = 874  # Total number of unique bees in the honeybee dataset
 
 
 # Training and validation

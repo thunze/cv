@@ -10,21 +10,30 @@ import wandb
 from torch import nn
 from torch.utils.data import DataLoader
 
-from .config import CHECKPOINTS_PATH, DEVICE, WANDB_ENTITY, WANDB_PROJECT
+from .config import (
+    CHECKPOINTS_PATH,
+    DEVICE,
+    TOTAL_NUMBER_OF_BEES,
+    WANDB_ENTITY,
+    WANDB_PROJECT,
+)
 from .dataset import HoneybeeImagePair
-from .validate import validate_epoch_validation_loss
+from .validate import evaluate_on_linear_predictors, validate_epoch_validation_loss
 
 __all__ = ["train"]
 
 
 def train(
     model: nn.Module,
+    train_dataloader: DataLoader,
+    validate_dataloader: DataLoader,
     train_pair_dataloader: DataLoader,
     validate_pair_dataloader: DataLoader,
     criterion: nn.Module,
     optimizer: torch.optim.Optimizer,
     scheduler: torch.optim.lr_scheduler._LRScheduler,
     epochs: int,
+    linear_predictors_train_epochs: int,
     all_hyperparameters: dict[str, float | int | str],
     *,
     log_to_wandb: bool = False,
@@ -33,6 +42,8 @@ def train(
 
     Args:
         model: The model to train.
+        train_dataloader: `DataLoader` providing the training `HoneybeeDataset`.
+        validate_dataloader: `DataLoader` providing the validation `HoneybeeDataset`.
         train_pair_dataloader: `DataLoader` providing the training
             `HoneybeeImagePairDataset`.
         validate_pair_dataloader: `DataLoader` providing the validation
@@ -40,7 +51,9 @@ def train(
         criterion: Loss function to use for training.
         optimizer: Optimizer to use for training.
         scheduler: Learning rate scheduler to use during training.
-        epochs: Number of epochs to train for.
+        epochs: Number of epochs to train `model` for.
+        linear_predictors_train_epochs: Number of epochs for which to train the
+            linear evaluation head for validation after each epoch of training `model`.
         all_hyperparameters: Dictionary of all hyperparameters to log.
         log_to_wandb: Whether to log training progress to Weights & Biases (wandb).
     """
@@ -88,7 +101,7 @@ def train(
 
             # Compute training loss
             batch_loss = criterion(z0, z1)
-            training_loss_epoch += batch_loss.detach()
+            training_loss_epoch += batch_loss.item()
 
             # Backpropagation and optimization
             batch_loss.backward()
@@ -109,27 +122,54 @@ def train(
                 model, validate_pair_dataloader, criterion
             )
 
+        # We need gradients for training, therefore not wrapped in `torch.no_grad()`
+        lin_eval_results = evaluate_on_linear_predictors(
+            model,
+            train_dataloader,  # Use train dataset for training
+            validate_dataloader,  # Use validation dataset for testing
+            TOTAL_NUMBER_OF_BEES,
+            linear_predictors_train_epochs,
+        )
+
         model.train()  # Set the model back to training mode
 
         # --- Logging ---
 
+        log_data = {
+            "train/epoch": epoch,
+            "train/learning_rate": optimizer.param_groups[0]["lr"],
+            "train/loss": avg_training_loss_epoch,
+            "validate/loss": avg_validation_loss_epoch,
+            "validate/lin_eval/id/train_loss_last_epoch": (
+                lin_eval_results.id_train_loss_last_epoch
+            ),
+            "validate/lin_eval/id/test_loss": lin_eval_results.id_test_loss,
+            "validate/lin_eval/id/test_accuracy": lin_eval_results.id_test_accuracy,
+            "validate/lin_eval/class/train_loss_last_epoch": (
+                lin_eval_results.class_train_loss_last_epoch
+            ),
+            "validate/lin_eval/class/test_loss": lin_eval_results.class_test_loss,
+            "validate/lin_eval/class/test_accuracy": (
+                lin_eval_results.class_test_accuracy
+            ),
+            "validate/lin_eval/angle/train_loss_last_epoch": (
+                lin_eval_results.angle_train_loss_last_epoch
+            ),
+            "validate/lin_eval/angle/test_loss": lin_eval_results.angle_test_loss,
+            "validate/lin_eval/angle/test_mae": lin_eval_results.angle_test_mae,
+        }
+
         # Log to standard output
-        print(
-            f"epoch: {epoch:>02}, "
-            f"training loss: {avg_training_loss_epoch:.5f}, "
-            f"validation loss: {avg_validation_loss_epoch:.5f}"
-        )
+        print()  # Newline for better readability
+        for key, value in log_data.items():
+            if isinstance(value, float):
+                print(f"{key}: {value:.5f}")
+            else:
+                print(f"{key}: {value}")
 
         # Log to wandb if enabled
         if wandb_run is not None:
-            wandb_run.log(
-                {
-                    "train/epoch": epoch,
-                    "train/learning_rate": optimizer.param_groups[0]["lr"],
-                    "train/loss": avg_training_loss_epoch,
-                    "validate/loss": avg_validation_loss_epoch,
-                }
-            )
+            wandb_run.log(log_data)
 
     # --- Finalization ---
 
