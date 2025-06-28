@@ -22,7 +22,10 @@ __all__ = ["train_vicreg"]
 ## Basic training parameters
 BATCH_SIZE = 2048  # Lightly example: 256
 EPOCHS = 1000  # Lightly example: 10
-LINEAR_PREDICTORS_TRAIN_EPOCHS = 100  # When training linear predictors for validation
+
+## Parameters for validating the model on linear predictors
+LINEAR_PREDICTORS_TRAIN_EPOCHS = 3  # Number of epochs for which to train predictors
+LINEAR_PREDICTORS_LEARNING_RATE = 1e-3  # Learning rate to use for predictors
 
 ## Loss parameters
 VICREG_LOSS_LAMBDA = 25  # Variance loss weight
@@ -51,6 +54,7 @@ ALL_HYPERPARAMETERS = {
     "batch_size": BATCH_SIZE,
     "epochs": EPOCHS,
     "linear_predictors_train_epochs": LINEAR_PREDICTORS_TRAIN_EPOCHS,
+    "linear_predictors_learning_rate": LINEAR_PREDICTORS_LEARNING_RATE,
     "vicreg_loss_lambda": VICREG_LOSS_LAMBDA,
     "vicreg_loss_mu": VICREG_LOSS_MU,
     "vicreg_loss_nu": VICREG_LOSS_NU,
@@ -175,6 +179,7 @@ def train_vicreg(*, log_to_wandb: bool = False) -> None:
         scheduler=scheduler,
         epochs=EPOCHS,
         linear_predictors_train_epochs=LINEAR_PREDICTORS_TRAIN_EPOCHS,
+        linear_predictors_learning_rate=LINEAR_PREDICTORS_LEARNING_RATE,
         all_hyperparameters=ALL_HYPERPARAMETERS,
         log_to_wandb=log_to_wandb,
     )

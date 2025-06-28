@@ -34,6 +34,7 @@ def train(
     scheduler: torch.optim.lr_scheduler._LRScheduler,
     epochs: int,
     linear_predictors_train_epochs: int,
+    linear_predictors_learning_rate: float,
     all_hyperparameters: dict[str, float | int | str],
     *,
     log_to_wandb: bool = False,
@@ -54,6 +55,8 @@ def train(
         epochs: Number of epochs to train `model` for.
         linear_predictors_train_epochs: Number of epochs for which to train the
             linear evaluation head for validation after each epoch of training `model`.
+        linear_predictors_learning_rate: Learning rate used for training the linear
+            evaluation head for validation after each epoch of training `model`.
         all_hyperparameters: Dictionary of all hyperparameters to log.
         log_to_wandb: Whether to log training progress to Weights & Biases (wandb).
     """
@@ -129,6 +132,7 @@ def train(
             validate_dataloader,  # Use validation dataset for testing
             TOTAL_NUMBER_OF_BEES,
             linear_predictors_train_epochs,
+            linear_predictors_learning_rate,
         )
 
         model.train()  # Set the model back to training mode

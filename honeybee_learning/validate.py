@@ -101,6 +101,7 @@ def evaluate_on_linear_predictors(
     test_dataloader: DataLoader,
     total_number_of_bees: int,
     train_epochs: int,
+    learning_rate: float,
 ) -> LinearPredictorsEvaluationResults:
     """With `model` frozen, train three linear predictors on the training dataset
     provided by `train_dataloader`, and test them on the test dataset provided by
@@ -126,6 +127,7 @@ def evaluate_on_linear_predictors(
             classifier.
         train_epochs: Number of epochs to train the linear evaluation head on the
             training dataset for.
+        learning_rate: Learning rate for the linear evaluation head optimizer.
 
     Returns:
         `LinearPredictorsEvaluationResults` object containing the results of this
@@ -182,10 +184,7 @@ def evaluate_on_linear_predictors(
     criterion_angle = nn.MSELoss()  # For bee orientation regression (real-valued)
 
     # Prepare optimizer for the linear evaluation head
-    optimizer = torch.optim.Adam(
-        linear_evaluation_head.parameters(),
-        lr=1e-3,  # Learning rate for the linear evaluation head
-    )
+    optimizer = torch.optim.Adam(linear_evaluation_head.parameters(), lr=learning_rate)
 
     # --- Training ---
 
