@@ -4,7 +4,7 @@ from lightly.loss import NTXentLoss
 from lightly.models.modules import SimCLRProjectionHead
 from torch import nn
 from lightly.utils.lars import LARS
-
+import numpy as np
 from lightly.loss.ntx_ent_loss import NTXentLoss
 from lightly.models.modules import SimCLRProjectionHead
 
@@ -20,18 +20,18 @@ __all__ = ["train_simclr"]
 
 ## Basic training parameters
 BATCH_SIZE = 4096 # As defined in original paper (Figure 9; small epoch size + large batch size = good performance)
-EPOCHS = 100
+EPOCHS = 1000  # Paper goes up to 800
 
 ## Parameters for validating the model on linear predictors
-LINEAR_PREDICTORS_TRAIN_EPOCHS = 90  # Number of epochs for which to train predictors
-LINEAR_PREDICTORS_LEARNING_RATE = 0.1 * BATCH_SIZE/256  # Learning rate to use for predictors
+LINEAR_PREDICTORS_TRAIN_EPOCHS = 800  # Number of epochs for which to train predictors
+LINEAR_PREDICTORS_LEARNING_RATE = 0.075 * np.sqrt(BATCH_SIZE)  # Learning rate to use for predictors; makes no difference when batch size = 4096
 
 ## Loss parameters
 TEMPERATURE = 0.1 # Default 0.1
 GATHERED_DISTRIBUTED = True # Trains on more negatives samples; if more than 1 GPU used
 
 ## Optimizer parameters
-LARS_LEARNING_RATE=0.3*BATCH_SIZE/256 # In paper, squared root LR scaling did not give better performance for batch size of 4096 (64.6 vs 64.5)
+LARS_LEARNING_RATE=0.3*BATCH_SIZE/256 # As specified in paper
 LARS_MOMENTUM=0.9
 LARS_WEIGHT_DECAY=1e-6
 
