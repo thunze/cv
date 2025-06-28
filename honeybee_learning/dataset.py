@@ -10,7 +10,14 @@ from torch.utils.data import DataLoader, Dataset
 
 from .config import DATALOADER_NUM_WORKERS
 
-__all__ = ["HoneybeeDataset", "get_dataset", "get_dataloader"]
+__all__ = [
+    "HoneybeeSample",
+    "HoneybeeImagePair",
+    "HoneybeeDataset",
+    "HoneybeeImagePairDataset",
+    "get_dataset",
+    "get_dataloader",
+]
 
 
 class HoneybeeSample(NamedTuple):
@@ -80,34 +87,47 @@ class HoneybeeImagePairDataset(Dataset):
         """Get a `HoneybeeImagePair` from the dataset by index."""
 
 
-def get_dataset(*, mode: Literal["train", "validate", "test"]) -> LightlyDataset:
-    """Get a `LightlyDataset` for the honeybee dataset.
+def get_dataset(
+    *, pairs: bool, mode: Literal["train", "validate", "test"]
+) -> LightlyDataset:
+    """Get a `LightlyDataset` wrapper for the honeybee dataset.
 
     Args:
+        pairs: Whether to return a dataset of image pairs instead of individual
+            honeybee samples. If `True`, returns a wrapper for a new
+            `HoneybeeImagePairDataset` instance; if `False`, returns a wrapper for a
+            new `HoneybeeDataset` instance.
         mode: The dataset split to load. Can be 'train', 'validate', or 'test'.
 
     Returns:
         A `LightlyDataset` object for the specified dataset split.
     """
-    torch_dataset = HoneybeeDataset(mode=mode)
+    if pairs:
+        torch_dataset = HoneybeeImagePairDataset(mode=mode)
+    else:
+        torch_dataset = HoneybeeDataset(mode=mode)
 
     # Lightly models require a `LightlyDataset`
     return LightlyDataset.from_torch_dataset(torch_dataset)
 
 
 def get_dataloader(
-    *, mode: Literal["train", "validate", "test"], batch_size: int
+    *, pairs: bool, mode: Literal["train", "validate", "test"], batch_size: int
 ) -> DataLoader:
     """Get a `DataLoader` for the honeybee dataset.
 
     Args:
+        pairs: Whether to return a dataloader for a dataset of image pairs instead of
+            individual honeybee samples. If `True`, returns a dataloader for a new
+            `HoneybeeImagePairDataset` instance; if `False`, returns a dataloader for
+            a new `HoneybeeDataset` instance.
         mode: The dataset split to load. Can be 'train', 'validate', or 'test'.
         batch_size: The batch size for the `DataLoader`.
 
     Returns:
         A `DataLoader` object for the specified dataset split.
     """
-    dataset = get_dataset(mode=mode)
+    dataset = get_dataset(pairs=pairs, mode=mode)
     return DataLoader(
         dataset,
         batch_size=batch_size,
