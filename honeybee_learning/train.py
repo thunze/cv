@@ -11,6 +11,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 
 from .config import CHECKPOINTS_PATH, DEVICE, WANDB_ENTITY, WANDB_PROJECT
+from .dataset import HoneybeeImagePair
 from .validate import validate_epoch_validation_loss
 
 __all__ = ["train"]
@@ -18,8 +19,8 @@ __all__ = ["train"]
 
 def train(
     model: nn.Module,
-    train_dataloader: DataLoader,
-    validate_dataloader: DataLoader,
+    train_pair_dataloader: DataLoader,
+    validate_pair_dataloader: DataLoader,
     criterion: nn.Module,
     optimizer: torch.optim.Optimizer,
     scheduler: torch.optim.lr_scheduler._LRScheduler,
@@ -32,8 +33,10 @@ def train(
 
     Args:
         model: The model to train.
-        train_dataloader: `DataLoader` for the training dataset.
-        validate_dataloader: `DataLoader` for the validation dataset.
+        train_pair_dataloader: `DataLoader` providing the training
+            `HoneybeeImagePairDataset`.
+        validate_pair_dataloader: `DataLoader` providing the validation
+            `HoneybeeImagePairDataset`.
         criterion: Loss function to use for training.
         optimizer: Optimizer to use for training.
         scheduler: Learning rate scheduler to use during training.
@@ -67,11 +70,13 @@ def train(
 
         # --- Training ---
 
+        batch: HoneybeeImagePair
+
         # Train for one epoch
         # One pass through the training dataset
-        for batch in train_dataloader:
+        for batch in train_pair_dataloader:
             # `x0` and `x1` are two views of the same honeybee.
-            x0, x1 = batch[0]  # TODO: This may need to be adjusted based on the dataset
+            x0, x1 = batch
 
             # Move data to target device
             x0 = x0.to(DEVICE)
@@ -92,7 +97,7 @@ def train(
             scheduler.step()  # Update learning rate
 
         # Compute average training loss for the epoch
-        avg_training_loss_epoch = training_loss_epoch / len(train_dataloader)
+        avg_training_loss_epoch = training_loss_epoch / len(train_pair_dataloader)
 
         # --- Validation ---
 
@@ -101,7 +106,7 @@ def train(
         # Validate the model after one epoch of training
         with torch.no_grad():
             avg_validation_loss_epoch = validate_epoch_validation_loss(
-                model, validate_dataloader, criterion
+                model, validate_pair_dataloader, criterion
             )
 
         model.train()  # Set the model back to training mode

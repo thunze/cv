@@ -7,21 +7,23 @@ from torch import nn
 from torch.utils.data import DataLoader
 
 from .config import DEVICE
+from .dataset import HoneybeeImagePair
 
 __all__ = ["validate_epoch_validation_loss"]
 
 
 def validate_epoch_validation_loss(
     model: nn.Module,
-    validate_dataloader: DataLoader,
+    validate_pair_dataloader: DataLoader,
     criterion: nn.Module,
 ) -> float:
-    """Validate `model` for one epoch on data provided by `validate_dataloader` using
-    `criterion` to compute the validation loss.
+    """Validate `model` for one epoch on data provided by `validate_pair_dataloader`
+    using `criterion` to compute the validation loss.
 
     Args:
         model: Model to validate.
-        validate_dataloader: `DataLoader` providing the validation dataset.
+        validate_pair_dataloader: `DataLoader` providing the validation
+            `HoneybeeImagePairDataset`.
         criterion: Loss function to compute the validation loss.
 
     Returns:
@@ -31,11 +33,12 @@ def validate_epoch_validation_loss(
     assert not model.training
 
     validation_loss_epoch = 0  # Aggregate validation loss for the epoch
+    batch: HoneybeeImagePair
 
     # One pass through the validation dataset
-    for batch in validate_dataloader:
+    for batch in validate_pair_dataloader:
         # `x0` and `x1` are two views of the same honeybee.
-        x0, x1 = batch[0]
+        x0, x1 = batch
 
         # Move data to target device
         x0 = x0.to(DEVICE)
@@ -50,5 +53,5 @@ def validate_epoch_validation_loss(
         validation_loss_epoch += batch_loss.detach()
 
     # Compute average validation loss for the epoch
-    avg_validation_loss_epoch = validation_loss_epoch / len(validate_dataloader)
+    avg_validation_loss_epoch = validation_loss_epoch / len(validate_pair_dataloader)
     return avg_validation_loss_epoch

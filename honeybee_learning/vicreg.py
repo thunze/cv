@@ -108,9 +108,13 @@ def train_vicreg(*, log_to_wandb: bool = False) -> None:
     Args:
         log_to_wandb: Whether to log training progress to Weights & Biases (wandb).
     """
-    # Load training and validation data
-    train_dataloader = get_dataloader(mode="train", batch_size=BATCH_SIZE)
-    validate_dataloader = get_dataloader(mode="validate", batch_size=BATCH_SIZE)
+    # Prepare loading training and validation data
+    train_pair_dataloader = get_dataloader(
+        pairs=True, mode="train", batch_size=BATCH_SIZE
+    )
+    validate_pair_dataloader = get_dataloader(
+        pairs=True, mode="validate", batch_size=BATCH_SIZE
+    )
 
     # Prepare model
     model = VICReg()
@@ -143,8 +147,8 @@ def train_vicreg(*, log_to_wandb: bool = False) -> None:
     )
 
     # Prepare learning rate scheduler
-    warmup_iterations = LR_SCHEDULER_WARMUP_EPOCHS * len(train_dataloader)
-    total_iterations = EPOCHS * len(train_dataloader)
+    warmup_iterations = LR_SCHEDULER_WARMUP_EPOCHS * len(train_pair_dataloader)
+    total_iterations = EPOCHS * len(train_pair_dataloader)
     scheduler = CosineWarmupScheduler(
         optimizer,
         warmup_epochs=warmup_iterations,  # Number of warmup training steps (not epochs)
@@ -156,8 +160,8 @@ def train_vicreg(*, log_to_wandb: bool = False) -> None:
     # Train the model
     train(
         model=model,
-        train_dataloader=train_dataloader,
-        validate_dataloader=validate_dataloader,
+        train_pair_dataloader=train_pair_dataloader,
+        validate_pair_dataloader=validate_pair_dataloader,
         criterion=criterion,
         optimizer=optimizer,
         scheduler=scheduler,
