@@ -86,7 +86,16 @@ class VICReg(nn.Module):
         )
 
     def forward(self, x):
-        """Forward pass through the model."""
+        """Forward pass through the model.
+
+        Args:
+            x: Input tensor of shape (..., channels, height, width), representing the
+                input images.
+
+        Returns:
+            Output tensor of shape (..., feature dimensions), representing the
+            projected features.
+        """
         x_r = self.resize(x)
         h = self.backbone(x_r).flatten(start_dim=1)  # Don't flatten across batches
         z = self.projection_head(h)
