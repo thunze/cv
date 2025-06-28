@@ -1,7 +1,7 @@
 import os
 import cv2
-
-
+import logging
+import traceback
 
 
 
@@ -47,7 +47,7 @@ def extract_trajectory_information(trajectories_path):
                                 "angle": angle
                             })
                 except Exception as e:
-                    print(f"Error reading {file_path}: {e}")
+                    logging.exception(f"Error reading {file_path}: {e}")
     return detections_by_frame
 
 
@@ -66,27 +66,33 @@ def extract_frames_from_video(videos_path, frames_path):
 
                 # If folder already exists, assume that all frames were successfully extracted, might change this later to be more robust
                 if os.path.isdir(frames_path + "rec" + rec_no):
-                    print(f"Skipping video {file}")
+                    logging.info(f"Skipping video {file}")
                 else:
                     os.makedirs(frames_path + "rec" + rec_no, exist_ok=True)
                     vidcap = cv2.VideoCapture(video_path)
                     count = 0;
                     success = True
                     while success:
-                        success, image = vidcap.read()
-                        cv2.imwrite(f"{frames_path}/rec{rec_no}/frame%04d.png" % count, image)
-                        count += 1
+                        try:
+                            success, image = vidcap.read()
+                            if success and image is not None:
+                                cv2.imwrite(f"{frames_path}/rec{rec_no}/frame%04d.png" % count, image)
+                                count += 1
+                            else:
+                                break
+                        except Exception as e:
+                            logging.exception("Exception while extracting frames: " + traceback.format_exc(e))
+                logging.info("Finished extracting frames for recording " + rec_no)
 
-
-def crop_bee(img, x, y, crop_size=256):
+def crop_bee(img, y, x, crop_size=256):
     """
     Crops a square region of size crop_size x crop_size centered at (x, y)
     from a grayscale image. Moves the crop window if necessary to stay within bounds.
 
     Args:
         img (np.ndarray): The input image.
-        x (int): X-coordinate of the center point.
-        y (int): Y-coordinate of the center point.
+        y (int): X-coordinate of the center point.
+        x (int): Y-coordinate of the center point.
         crop_size (int): Size of the crop (default is 256).
 
     Returns:
@@ -139,16 +145,17 @@ def extract_save_crops(bee_detections_by_frame, frames_path,crops_path, bee_numb
 
     # Loop through all (rec_no, frame_no) pairs and extract all (or the single one) bees for that frame, so frames only have to be opened once each
     for (rec_no, frame_no), bees in sorted(bee_detections_by_frame.items()):
+
         frame_name = f"frame{str(frame_no).rjust(4, '0')}.png"
         frame_path = os.path.join(frames_path, f"rec{rec_no}", frame_name)
         frame_img = cv2.imread(frame_path, cv2.IMREAD_GRAYSCALE)
         if frame_img is None:
-            print(f"Warning: Could not load frame {frame_path}")
+            logging.info(f"Warning: Could not load frame {frame_path}")
             continue
-
+        #logging.info(f"{len(bees)} bees found in frame {frame_no}, rec {rec_no}.")
         for bee in bees:
             #
-            if bee["bee_no"] != bee_number:
+            if (bee_number != None) & (bee["bee_no"] != bee_number):
                 continue  # Skip bees that are not the target one
 
             pos_x = bee["pos_x"]
@@ -161,22 +168,39 @@ def extract_save_crops(bee_detections_by_frame, frames_path,crops_path, bee_numb
             output_path = os.path.join(crops_path, output_name)
 
             # Get crop and save it
-            crop = crop_bee(frame_img, pos_x, pos_y, crop_size=256)
+            #logging.info(f"Cropping bee no. {bee_no}, rec no. {rec_no}, frame no. {frame_no}")
+            crop = crop_bee(frame_img, pos_x, pos_y, crop_size=128)
 
             cv2.imwrite(output_path, crop)
+        logging.info(f"Finished croppings for: Recording no. {rec_no}, frame no. {frame_no} ")
 
 def main():
-    trajectories_path = "./data/trajectories/"
-    vid_path = "./data/videos/"
-    frames_path = "./data/frames/"
-    crops_path = "./data/crops/"
+    # Initialize logging
+    logging.basicConfig(
+        filename=f"/scratch/cv-course2025/group7/processing128.log",  # Save logs to a file
+        level=logging.INFO,  # Log levels: DEBUG, INFO, WARNING, ERROR, CRITICAL
+        format="%(asctime)s - %(levelname)s - %(message)s",  # Log format
+    )
 
+    logging.info("Starting trajectory extraction")
+    trajectories_path = "/scratch/cv-course2025/group7/trajectories/"
+    vid_path = "/scratch/cv-course2025/group7/videos/"
+    frames_path = "/scratch/cv-course2025/group7/frames/"
+    crops_path = "/scratch/cv-course2025/group7/crops128/"
+
+
+    logging.info("Starting trajectory extraction")
     bee_detections_by_frame = extract_trajectory_information(trajectories_path)
+
+    logging.info("Trajectory extraction finished, starting frame extraction from videos")
     extract_frames_from_video(vid_path, frames_path)
+    logging.info("Frame extraction finished.")
 
-    extract_save_crops(bee_detections_by_frame, frames_path,crops_path ,"000000")
 
-    pass
+    logging.info(f"Starting cropping.")
+    extract_save_crops(bee_detections_by_frame, frames_path,crops_path)
+
+    logging.info("Program execution done.")
 
 if __name__ == main():
     main()
