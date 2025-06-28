@@ -12,7 +12,7 @@ __all__ = ["validate_epoch_validation_loss"]
 
 
 def validate_epoch_validation_loss(
-    model,
+    model: nn.Module,
     validate_dataloader: DataLoader,
     criterion: nn.Module,
 ) -> float:
@@ -28,6 +28,7 @@ def validate_epoch_validation_loss(
         Average validation loss for the epoch.
     """
     assert not torch.is_grad_enabled()
+    assert not model.training
 
     validation_loss_epoch = 0  # Aggregate validation loss for the epoch
 
