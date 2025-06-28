@@ -1,35 +1,75 @@
-# Note: The model and training settings do not follow the reference settings
-# from the paper. The settings are chosen such that the example can easily be
-# run on a small dataset with a single GPU.
-
-
 # Imports
-import torch
 import torchvision
 from lightly.loss import NTXentLoss
 from lightly.models.modules import SimCLRProjectionHead
 from torch import nn
+from lightly.utils.lars import LARS
 
 from lightly.loss.ntx_ent_loss import NTXentLoss
 from lightly.models.modules import SimCLRProjectionHead
-from torch.optim.lr_scheduler import CosineAnnealingLR
 
-from torch.utils.data import DataLoader, Dataset
+from config import DEVICE
+from scheduler import CosineAnnealingWithLinearRampLR
+from dataset import get_dataloader
+from train import train
+
+__all__ = ["train_simclr"]
+
+# Hyperparameters
+
+## Basic training parameters
+BATCH_SIZE = 4096 # As defined in original paper (Figure 9; small epoch size + large batch size = good performance)
+EPOCHS = 100
+
+## Loss parameters
+TEMPERATURE = 0.1 # Default 0.1
+
+## Optimizer parameters
+LARS_LEARNING_RATE=0.3*BATCH_SIZE/256 # as defined in paper
+LARS_MOMENTUM=0.9
+LARS_WEIGHT_DECAY=1e-6
+LARS_TRUST_COEF=1e-3
+
+## Projection head configuration. See `SimCLRProjectionHead` for more details.
+PROJECTION_HEAD_INPUT_DIM = 2048
+PROJECTION_HEAD_HIDDEN_DIM = 2048
+PROJECTION_HEAD_OUTPUT_DIM = 128
+PROJECTION_HEAD_NUM_LAYERS = 2
+
+# Hyperparameters to log for the run
+ALL_HYPERPARAMETERS = {
+    "batch_size": BATCH_SIZE,
+    "epochs": EPOCHS,
+    "simclr_loss_temp": TEMPERATURE,
+    "lars_learning_rate": LARS_LEARNING_RATE,
+    "lars_momentum": LARS_MOMENTUM,
+    "lars_weight_decay": LARS_WEIGHT_DECAY,
+    "lars_trust_coeff": LARS_TRUST_COEF,
+    "projection_head_input_dim": PROJECTION_HEAD_INPUT_DIM,
+    "projection_head_hidden_dim": PROJECTION_HEAD_HIDDEN_DIM,
+    "projection_head_output_dim": PROJECTION_HEAD_OUTPUT_DIM,
+    "projection_head_num_layers": PROJECTION_HEAD_NUM_LAYERS,
+}
+
 
 
 class SimCLR(nn.Module):
     """
         SimCLR model adapted for the honeybee problem task
     """
-    def __init__(self, backbone, hidden_dim):
+    def __init__(self):
         super().__init__()
+        
+        resnet = torchvision.models.resnet50()
+        backbone = nn.Sequential(*list(resnet.children())[:-1])
         self.backbone = backbone
 
-        # Input and hidden dim of same size in paper
+        # Input and hidden dim of same size
         self.projection_head = SimCLRProjectionHead(
-            input_dim=hidden_dim,
-            hidden_dim=hidden_dim,
-            output_dim=output_dim,
+            input_dim=PROJECTION_HEAD_INPUT_DIM,
+            hidden_dim=PROJECTION_HEAD_HIDDEN_DIM,
+            output_dim=PROJECTION_HEAD_OUTPUT_DIM,
+            num_layers=PROJECTION_HEAD_NUM_LAYERS,
         )
     
     def forward(self, x):
@@ -38,101 +78,53 @@ class SimCLR(nn.Module):
         return z
 
 
-# Initialize hyperparams
-epochs = 100 
-batch_size = 4096 # cf. Paper Figure 9 (for small epoch size large batch sizes perform signficantly better)
-lr = 0.3*batch_size/256 # as defined in paper
-output_dim = 128 # for projection head
-
-device = "cuda" if torch.cuda.is_available() else "cpu"
-num_workers=8
-
-# Model initialization
-resnet = torchvision.models.resnet50()
-backbone = nn.Sequential(*list(resnet.children())[:-1])
-hidden_dim = resnet.fc.in_features # equals to 2048 for ResNet50
-model = SimCLR(backbone, hidden_dim)
-
-model.to(device)
-
-criterion = NTXentLoss()
-optimizer = torch.optim.SGD(model.parameters(), lr=lr)
-scheduler = CosineAnnealingLR(optimizer, T_max=epochs) # optional but highly recommended in paper (especially with lr defined as is)
-
-
 def train_simclr():
     '''
         Training pipeline for SimCLR model
     '''
-
-    # TODO: run wandb
-    
     # Load training and validation data
-    train_dataset = load_dataset(mode="train")
-    validate_dataset = load_dataset(mode="validate")
+    train_dataloader = get_dataloader(mode="train", batch_size=BATCH_SIZE)
+    validate_dataloader = get_dataloader(mode="validate", batch_size=BATCH_SIZE)
 
-    # Create dataloaders
-    train_dataloader = DataLoader(
-        train_dataset,
-        batch_size=batch_size,
-        shuffle=True,
-        drop_last=True,
-        num_workers=num_workers,
-    )
-    validate_dataloader = DataLoader(
-        validate_dataset,
-        batch_size=batch_size,
-        shuffle=False, # Turned off for validation data
-        drop_last=True,
-        num_workers=num_workers,
+    # Prepare model
+    model = SimCLR()
+    model = model.to(DEVICE)  # Move model to target device
+
+    # Prepare loss function
+    criterion = NTXentLoss(
+        temperature=TEMPERATURE,
     )
 
+    # Prepare optimizer
+    # For performance reasons, don't apply weight decay to norm and bias parameters.
+    #params_weight_decay, params_no_weight_decay = get_weight_decay_parameters(
+    #    [model.backbone, model.projection_head]
+    #)
     
-    ## Training ## 
-    print("Starting SimCLR Training")
-    model.train()
-    model.zero_grad()
-    for epoch in range(epochs):
-        training_loss = 0
-        for batch in train_dataloader:
-            x0, x1 = batch[0] # NOTE: dependent on getitem format
-            
-            x0 = x0.to(device)
-            x1 = x1.to(device)
-            
-            z0 = model(x0)
-            z1 = model(x1)
-            
-            loss = criterion(z0, z1)
-            training_loss += loss.detach()
-            
-            loss.backward()
-            optimizer.step()
-            optimizer.zero_grad()
+    optimizer = LARS(
+        lr=LARS_LEARNING_RATE, 
+        momentum=LARS_MOMENTUM,
+        weight_decay=LARS_WEIGHT_DECAY,
+        trust_coef=LARS_TRUST_COEF
+    )
     
-        avg_training_loss = training_loss / len(train_dataloader)
+    # Prepare learning rate scheduler
+    total_iterations = EPOCHS * len(train_dataloader)
+    scheduler = CosineAnnealingWithLinearRampLR(
+        optimizer,
+        T_max=total_iterations,  # Total number of training steps (not epochs)
+        ramp_len=10 # Linear ramp scheduler runs (10 epochs is default in original paper)
+    )
 
-        
-        model.eval()
-        validation_loss = 0
-        with torch.no_grad():
-            for batch in validate_dataloader:
-                x0, x1 = batch[0] # NOTE: dependent on getitem format
-                
-                x0 = x0.to(device)
-                x1 = x1.to(device)
-                
-                z0 = model(x0)
-                z1 = model(x1)
-                
-                loss = criterion(z0, z1)
-                validation_loss += loss.detach()
-
-        # Adapt learning rate (optional)
-        scheduler.step()
-    
-        avg_validation_loss = validation_loss / len(validate_dataloader)
-    
-        print(f"Epoch: {epoch:>02}, AVG Train Loss: {avg_training_loss:.5f}, AVG Val Loss: {avg_validation_loss:.5f}")
-        
-    
+    # Train the model
+    train(
+        model=model,
+        train_dataloader=train_dataloader,
+        validate_dataloader=validate_dataloader,
+        criterion=criterion,
+        optimizer=optimizer,
+        scheduler=scheduler,
+        epochs=EPOCHS,
+        all_hyperparameters=ALL_HYPERPARAMETERS,
+        log_to_wandb=log_to_wandb,
+    )
