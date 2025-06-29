@@ -1,17 +1,13 @@
-# Imports
+import numpy as np
 import torchvision
+from config import DEVICE
+from dataset import get_dataloader
 from lightly.loss import NTXentLoss
 from lightly.models.modules import SimCLRProjectionHead
-from torch import nn
-from lightly.utils.lars import LARS
-import numpy as np
-from lightly.loss.ntx_ent_loss import NTXentLoss
-from lightly.models.modules import SimCLRProjectionHead
-
 from lightly.models.utils import get_weight_decay_parameters
-from config import DEVICE
+from lightly.utils.lars import LARS
 from lightly.utils.scheduler import CosineWarmupScheduler
-from dataset import get_dataloader
+from torch import nn
 from train import train
 
 __all__ = ["train_simclr"]
@@ -19,24 +15,26 @@ __all__ = ["train_simclr"]
 # Hyperparameters
 
 ## Basic training parameters
-BATCH_SIZE = 4096 # As defined in original paper (Figure 9; small epoch size + large batch size = good performance)
+BATCH_SIZE = 4096  # Figure 9; small epoch size + large batch size = good performance
 EPOCHS = 1000  # Paper goes up to 800
 
 ## Parameters for validating the model on linear predictors
 LINEAR_PREDICTORS_TRAIN_EPOCHS = 800  # Number of epochs for which to train predictors
-LINEAR_PREDICTORS_LEARNING_RATE = 0.075 * np.sqrt(BATCH_SIZE)  # Learning rate to use for predictors; makes no difference when batch size = 4096
+LINEAR_PREDICTORS_LEARNING_RATE = 0.075 * np.sqrt(
+    BATCH_SIZE
+)  # Learning rate to use for predictors; makes no difference when batch size = 4096
 
 ## Loss parameters
-TEMPERATURE = 0.1 # Default 0.1
-GATHERED_DISTRIBUTED = True # Trains on more negatives samples; if more than 1 GPU used
+TEMPERATURE = 0.1  # Default 0.1
+GATHERED_DISTRIBUTED = True  # Trains on more negatives samples; if more than 1 GPU used
 
 ## Optimizer parameters
-LARS_LEARNING_RATE=0.3*BATCH_SIZE/256 # As specified in paper
-LARS_MOMENTUM=0.9
-LARS_WEIGHT_DECAY=1e-6
+LARS_LEARNING_RATE = 0.3 * BATCH_SIZE / 256  # As specified in paper
+LARS_MOMENTUM = 0.9
+LARS_WEIGHT_DECAY = 1e-6
 
 ## Learning rate scheduler parameters
-LR_SCHEDULER_WARMUP_EPOCHS=10
+LR_SCHEDULER_WARMUP_EPOCHS = 10
 
 ## Projection head configuration. See `SimCLRProjectionHead` for more details.
 PROJECTION_HEAD_INPUT_DIM = 2048
@@ -61,7 +59,6 @@ ALL_HYPERPARAMETERS = {
 }
 
 
-
 class SimCLR(nn.Module):
     """SimCLR model with ResNet backbone and projection head."""
 
@@ -70,7 +67,7 @@ class SimCLR(nn.Module):
 
         # Resize input images to 224x224, as expected by the ResNet backbone
         self.resize = torchvision.transforms.Resize((224, 224))
-        
+
         resnet = torchvision.models.resnet50()
         backbone = nn.Sequential(*list(resnet.children())[:-1])
         self.backbone = backbone
@@ -82,7 +79,7 @@ class SimCLR(nn.Module):
             output_dim=PROJECTION_HEAD_OUTPUT_DIM,
             num_layers=PROJECTION_HEAD_NUM_LAYERS,
         )
-    
+
     def forward(self, x):
         """Forward pass through the model.
 
@@ -101,11 +98,11 @@ class SimCLR(nn.Module):
 
 
 def train_simclr(*, log_to_wandb: bool = False) -> None:
-    '''Training pipeline for SimCLR model
-    
+    """Training pipeline for SimCLR model
+
     Args:
         log_to_wandb: Whether to log training progress to Weights & Biases (wandb).
-    '''
+    """
 
     # Load training and validation data
     train_dataloader = get_dataloader(mode="train", batch_size=BATCH_SIZE)
@@ -122,8 +119,7 @@ def train_simclr(*, log_to_wandb: bool = False) -> None:
 
     # Prepare loss function
     criterion = NTXentLoss(
-        temperature=TEMPERATURE,
-        gather_distributed=GATHERED_DISTRIBUTED
+        temperature=TEMPERATURE, gather_distributed=GATHERED_DISTRIBUTED
     )
 
     # Prepare optimizer
@@ -132,28 +128,28 @@ def train_simclr(*, log_to_wandb: bool = False) -> None:
         [model.backbone, model.projection_head]
     )
     optimizer = LARS(
-            [
-                {"name": "simclr_weight_decay", "params": params_weight_decay},
-                {
-                    "name": "simclr_no_weight_decay",
-                    "params": params_no_weight_decay,
-                    "weight_decay": 0.0,
-                },
-            ],
-        lr=LARS_LEARNING_RATE, 
+        [
+            {"name": "simclr_weight_decay", "params": params_weight_decay},
+            {
+                "name": "simclr_no_weight_decay",
+                "params": params_no_weight_decay,
+                "weight_decay": 0.0,
+            },
+        ],
+        lr=LARS_LEARNING_RATE,
         momentum=LARS_MOMENTUM,
         weight_decay=LARS_WEIGHT_DECAY,
     )
-    
+
     # Prepare learning rate scheduler
     warmup_iterations = LR_SCHEDULER_WARMUP_EPOCHS * len(train_pair_dataloader)
     total_iterations = EPOCHS * len(train_pair_dataloader)
-    scheduler = CosineWarmupScheduler(
-            optimizer,
-            warmup_epochs=warmup_iterations,
-            max_epochs=total_iterations
-    ),
-        
+    scheduler = (
+        CosineWarmupScheduler(
+            optimizer, warmup_epochs=warmup_iterations, max_epochs=total_iterations
+        ),
+    )
+
     # Train the model
     train(
         model=model,
