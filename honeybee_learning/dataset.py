@@ -27,7 +27,6 @@ __all__ = [
     "HoneybeeImagePair",
     "HoneybeeDataset",
     "HoneybeeImagePairDataset",
-    "get_dataset",
     "get_dataloader",
 ]
 
@@ -91,7 +90,7 @@ class HoneybeeDataset(Dataset):
     def __len__(self):
         return len(self.filenames)
 
-    def __getitem__(self, index: int):  # -> HoneybeeSample:
+    def __getitem__(self, index: int) -> HoneybeeSample:
         """Get a `HoneybeeSample` from the dataset by index."""
         filename = self.filenames[index]
         path = os.path.join(CROPS_PATH, filename)
@@ -105,14 +104,11 @@ class HoneybeeDataset(Dataset):
         else:
             bee_id = 361 + int(info["bee_no"])
 
-        return (
-            HoneybeeSample(
-                x=img,
-                id_=bee_id,
-                class_=int(info["class_no"]),
-                angle=int(info["angle"]),
-            ),
-            None,
+        return HoneybeeSample(
+            x=img,
+            id_=bee_id,
+            class_=int(info["class_no"]),
+            angle=int(info["angle"]),
         )
 
 
@@ -131,7 +127,7 @@ class HoneybeeImagePairDataset(Dataset):
     def __len__(self):
         return len(self.pairs)
 
-    def __getitem__(self, index: int):  # -> HoneybeeImagePair:
+    def __getitem__(self, index: int) -> HoneybeeImagePair:
         """Get a `HoneybeeImagePair` from the dataset by index."""
         pair = self.pairs[index]
         img1 = decode_image(os.path.join(CROPS_PATH, pair["frame"])).float() / 255.0
@@ -142,34 +138,15 @@ class HoneybeeImagePairDataset(Dataset):
         return HoneybeeImagePair(x1=img1, x2=img2)
 
 
-def get_dataset(
-    *, pairs: bool, mode: Literal["train", "validate", "test"]
-) -> LightlyDataset:
-    """Get a `LightlyDataset` wrapper for the honeybee dataset.
-
-    Args:
-        pairs: Whether to return a dataset of image pairs instead of individual
-            honeybee samples. If `True`, returns a wrapper for a new
-            `HoneybeeImagePairDataset` instance; if `False`, returns a wrapper for a
-            new `HoneybeeDataset` instance.
-        mode: The dataset split to load. Can be 'train', 'validate', or 'test'.
-
-    Returns:
-        A `LightlyDataset` object for the specified dataset split.
-    """
-    if pairs:
-        torch_dataset = HoneybeeImagePairDataset(mode=mode)
-    else:
-        torch_dataset = HoneybeeDataset(mode=mode)
-
-    # Lightly models require a `LightlyDataset`
-    return LightlyDataset.from_torch_dataset(torch_dataset)
-
-
 def get_dataloader(
     *, pairs: bool, mode: Literal["train", "validate", "test"], batch_size: int
 ) -> DataLoader:
     """Get a `DataLoader` for the honeybee dataset.
+
+    Uses a `HoneybeeDataset` or `HoneybeeImagePairDataset` under the hood, depending
+    on the `pairs` argument. If `pairs` is `True`, the `HoneybeeImagePairDataset` is
+    additionally wrapped in a `LightlyDataset` to support contrastive learning
+    techniques via the `lightly` library.
 
     Args:
         pairs: Whether to return a dataloader for a dataset of image pairs instead of
@@ -182,7 +159,12 @@ def get_dataloader(
     Returns:
         A `DataLoader` object for the specified dataset split.
     """
-    dataset = get_dataset(pairs=pairs, mode=mode)
+    if pairs:
+        torch_dataset = HoneybeeImagePairDataset(mode=mode)
+        dataset = LightlyDataset.from_torch_dataset(torch_dataset)
+    else:
+        dataset = HoneybeeDataset(mode=mode)
+
     return DataLoader(
         dataset,
         batch_size=batch_size,
