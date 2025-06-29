@@ -175,6 +175,9 @@ def get_dataloader(
 
 
 def split_pairs():
+    """Create and return a train-validate-test split of pairs of temporally adjacent
+    honeybee images from the honeybee dataset.
+    """
     # Validate input ratios
     if not (0 < TRAIN_RATIO < 1):
         raise ValueError("train_ratio must be between 0 and 1 (exclusive).")
@@ -236,6 +239,9 @@ def split_pairs():
 
 
 def split_single():
+    """Create and return a train-validate-test split of single honeybee images from
+    the honeybee dataset.
+    """
     # Validate input ratios
     if not (0 < TRAIN_RATIO < 1):
         raise ValueError("train_ratio must be between 0 and 1 (exclusive).")
