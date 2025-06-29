@@ -119,7 +119,8 @@ def train_simclr(*, log_to_wandb: bool = False) -> None:
 
     # Prepare loss function
     criterion = NTXentLoss(
-        temperature=TEMPERATURE, gather_distributed=GATHERED_DISTRIBUTED
+        temperature=TEMPERATURE,
+        gather_distributed=True,  # Use all negatives from all GPUs
     )
 
     # Prepare optimizer

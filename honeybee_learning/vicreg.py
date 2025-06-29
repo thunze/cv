@@ -135,6 +135,7 @@ def train_vicreg(*, log_to_wandb: bool = False) -> None:
         lambda_param=VICREG_LOSS_LAMBDA,
         mu_param=VICREG_LOSS_MU,
         nu_param=VICREG_LOSS_NU,
+        gather_distributed=True,  # Use cross-correlation matrices from all GPUs
     )
 
     # Prepare optimizer
