@@ -62,7 +62,7 @@ def train(
     """
     # Prepare logging for the run
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    run_name = f"vicreg_{timestamp}"
+    run_name = f"{model.__class__.__name__}_{timestamp}"
     print(f"Starting training run {run_name!r}...\n")
 
     # Initialize wandb run if enabled
@@ -92,7 +92,7 @@ def train(
         # One pass through the training dataset
         for batch in train_pair_dataloader:
             # `x0` and `x1` are two views of the same honeybee.
-            x0, x1 = batch
+            x0, x1, *_ = batch
 
             # Move data to target device
             x0 = x0.to(DEVICE)
