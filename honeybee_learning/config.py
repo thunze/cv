@@ -21,7 +21,7 @@ __all__ = [
 
 
 # Paths
-CHECKPOINTS_PATH = Path("./checkpoints")  # Path to save checkpoints to
+CHECKPOINTS_PATH = Path("/scratch/cv-course2025/group7/checkpoints")
 CROPS_PATH = Path("/scratch/cv-course2025/group7/crops128/")
 
 # Data
