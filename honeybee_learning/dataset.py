@@ -8,19 +8,19 @@ from collections import defaultdict
 from typing import Literal, NamedTuple
 
 import torch
-from torchvision.io import decode_image
 from lightly.data import LightlyDataset
 from torch.utils.data import DataLoader, Dataset
+from torchvision.io import decode_image
 
 from .config import (
+    CROPS_PATH,
     DATALOADER_NUM_WORKERS,
     DATASET_CREATE_SHUFFLE,
     DATASET_CREATE_SHUFFLE_SEED,
-    CROPS_PATH,
+    MAX_FRAME_DIFFERENCE,
     TRAIN_RATIO,
     VALIDATION_RATIO,
-    MAX_FRAME_DIFFERENCE
-    )
+)
 
 __all__ = [
     "HoneybeeSample",
@@ -77,25 +77,27 @@ class HoneybeeDataset(Dataset):
     """
 
     def __init__(self, *, mode: Literal["train", "validate", "test"]):
-
         self.samples = []
         self.mode = mode
 
         split_mapping = split_single()
 
-        self.filenames = [f for f in os.listdir(CROPS_PATH) if f.endswith(".png") and split_mapping[f] == mode]
+        self.filenames = [
+            f
+            for f in os.listdir(CROPS_PATH)
+            if f.endswith(".png") and split_mapping[f] == mode
+        ]
 
     def __len__(self):
         return len(self.filenames)
 
-    def __getitem__(self, index: int): # -> HoneybeeSample:
+    def __getitem__(self, index: int):  # -> HoneybeeSample:
         """Get a `HoneybeeSample` from the dataset by index."""
-
         filename = self.filenames[index]
         path = os.path.join(CROPS_PATH, filename)
 
-        img = decode_image(path).float()/255.0
-        #img = torch.unsqueeze(img, 0)
+        img = decode_image(path).float() / 255.0
+        # img = torch.unsqueeze(img, 0)
         info = parse_filename(filename)
 
         if info["recording_no"] == "1":
@@ -103,9 +105,15 @@ class HoneybeeDataset(Dataset):
         else:
             bee_id = 361 + int(info["bee_no"])
 
-        return (HoneybeeSample(x = img, id_=bee_id, class_ = int(info["class_no"]), angle= int(info["angle"])), None)
-
-
+        return (
+            HoneybeeSample(
+                x=img,
+                id_=bee_id,
+                class_=int(info["class_no"]),
+                angle=int(info["angle"]),
+            ),
+            None,
+        )
 
 
 class HoneybeeImagePairDataset(Dataset):
@@ -123,13 +131,16 @@ class HoneybeeImagePairDataset(Dataset):
     def __len__(self):
         return len(self.pairs)
 
-    def __getitem__(self, index: int): #-> HoneybeeImagePair:
+    def __getitem__(self, index: int):  # -> HoneybeeImagePair:
         """Get a `HoneybeeImagePair` from the dataset by index."""
         pair = self.pairs[index]
-        img1 = decode_image(os.path.join(CROPS_PATH,pair["frame"])).float()/255.0
-        img2 = decode_image(os.path.join(CROPS_PATH,pair["paired_frame"])).float()/255.0
+        img1 = decode_image(os.path.join(CROPS_PATH, pair["frame"])).float() / 255.0
+        img2 = (
+            decode_image(os.path.join(CROPS_PATH, pair["paired_frame"])).float() / 255.0
+        )
 
         return HoneybeeImagePair(x1=img1, x2=img2)
+
 
 def get_dataset(
     *, pairs: bool, mode: Literal["train", "validate", "test"]
@@ -182,7 +193,6 @@ def get_dataloader(
 
 
 def split_pairs():
-
     # Validate input ratios
     if not (0 < TRAIN_RATIO < 1):
         raise ValueError("train_ratio must be between 0 and 1 (exclusive).")
@@ -191,7 +201,10 @@ def split_pairs():
         raise ValueError("val_ratio must be between 0 (inclusive) and 1 (exclusive).")
 
     if TRAIN_RATIO + VALIDATION_RATIO >= 1.0:
-        raise ValueError("The sum of train_ratio and val_ratio must be less than 1.0 to leave room for a test split.")
+        raise ValueError(
+            "The sum of train_ratio and val_ratio must be less than 1.0 to leave "
+            "room for a test split."
+        )
 
     # Get list of files
     files = [f for f in os.listdir(CROPS_PATH) if f.endswith(".png")]
@@ -210,16 +223,13 @@ def split_pairs():
         if len(frame_files) == 1:
             continue
         frame_files.sort()
-        for i in range(len(frame_files) -1):
+        for i in range(len(frame_files) - 1):
             filename1 = frame_files[i]
             filename2 = frame_files[i + 1]
             frame_no1 = int(parse_filename(filename1)["frame_no"])
             frame_no2 = int(parse_filename(filename2)["frame_no"])
             if frame_no2 - frame_no1 <= MAX_FRAME_DIFFERENCE:
-                pairs.append({
-                    "frame" : filename1,
-                    "paired_frame" : filename2
-                })
+                pairs.append({"frame": filename1, "paired_frame": filename2})
 
     # Shuffle if necessary
     if DATASET_CREATE_SHUFFLE:
@@ -242,8 +252,8 @@ def split_pairs():
 
     return pairs
 
-def split_single():
 
+def split_single():
     # Validate input ratios
     if not (0 < TRAIN_RATIO < 1):
         raise ValueError("train_ratio must be between 0 and 1 (exclusive).")
@@ -252,7 +262,10 @@ def split_single():
         raise ValueError("val_ratio must be between 0 (inclusive) and 1 (exclusive).")
 
     if TRAIN_RATIO + VALIDATION_RATIO >= 1.0:
-        raise ValueError("The sum of train_ratio and val_ratio must be less than 1.0 to leave room for a test split.")
+        raise ValueError(
+            "The sum of train_ratio and val_ratio must be less than 1.0 to leave "
+            "room for a test split."
+        )
 
     files = [f for f in os.listdir(CROPS_PATH) if f.endswith(".png")]
 
@@ -278,16 +291,19 @@ def split_single():
 
 def parse_filename(filename: str):
     """
-    Given a filename of the convention "recordingNo_frameNo_beeNo_posX_posY_classNo_angle.png", parses this filename
+    Given a filename of the convention
+    "recordingNo_frameNo_beeNo_posX_posY_classNo_angle.png", parses this filename
     into a dict containing the information.
+
     :param filename:
-    :return: A dict containing the recording_no, frame_no, bee_no, class_no and angle in this order.
+    :return: A dict containing the recording_no, frame_no, bee_no, class_no and angle
+        in this order.
     """
-    parts = filename.replace(".png","").split("_")
+    parts = filename.replace(".png", "").split("_")
     return {
-        "recording_no" : parts[0],
-        "frame_no" : parts[1],
-        "bee_no" : parts[2],
+        "recording_no": parts[0],
+        "frame_no": parts[1],
+        "bee_no": parts[2],
         "class_no": parts[5],
-        "angle" : parts[6]
+        "angle": parts[6],
     }
