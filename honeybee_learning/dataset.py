@@ -272,14 +272,16 @@ def split_single():
 
 
 def parse_filename(filename: str):
-    """
-    Given a filename of the convention
-    "recordingNo_frameNo_beeNo_posX_posY_classNo_angle.png", parses this filename
-    into a dict containing the information.
+    """Parse a filename of the format
+    `recordingNo_frameNo_beeNo_posX_posY_classNo_angle.png` into a dict containing
+    this information.
 
-    :param filename:
-    :return: A dict containing the recording_no, frame_no, bee_no, class_no and angle
-        in this order.
+    Args:
+        filename: The filename to parse.
+
+    Returns:
+        A dict containing the corresponding `recording_no`, `frame_no`, `bee_no`,
+        `class_no` and `angle`.
     """
     parts = filename.replace(".png", "").split("_")
     return {
