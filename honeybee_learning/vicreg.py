@@ -103,7 +103,7 @@ class VICReg(nn.Module):
             projected features.
         """
         x_r = self.resize(x)
-        h = self.backbone(x_r).flatten(start_dim=1)  # Don't flatten across batches
+        h = self.backbone(x_r).flatten(start_dim=1)  # Don't flatten across samples
         z = self.projection_head(h)
         return z
 

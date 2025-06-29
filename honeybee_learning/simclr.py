@@ -1,3 +1,7 @@
+"""SimCLR model and training pipeline."""
+
+from __future__ import annotations
+
 import numpy as np
 import torchvision
 from config import DEVICE
@@ -12,6 +16,7 @@ from train import train
 
 __all__ = ["train_simclr"]
 
+
 # Hyperparameters
 
 ## Basic training parameters
@@ -20,16 +25,15 @@ EPOCHS = 1000  # Paper goes up to 800
 
 ## Parameters for validating the model on linear predictors
 LINEAR_PREDICTORS_TRAIN_EPOCHS = 800  # Number of epochs for which to train predictors
-LINEAR_PREDICTORS_LEARNING_RATE = 0.075 * np.sqrt(
-    BATCH_SIZE
-)  # Learning rate to use for predictors; makes no difference when batch size = 4096
+# Learning rate to use for predictors; makes no difference when batch size = 4096
+LINEAR_PREDICTORS_LEARNING_RATE = 0.075 * np.sqrt(BATCH_SIZE)
 
 ## Loss parameters
-TEMPERATURE = 0.1  # Default 0.1
-GATHERED_DISTRIBUTED = True  # Trains on more negatives samples; if more than 1 GPU used
+SIMCLR_LOSS_TEMPERATURE = 0.1  # Default: 0.1
 
 ## Optimizer parameters
-LARS_LEARNING_RATE = 0.3 * BATCH_SIZE / 256  # As specified in paper
+_LARS_BASE_LEARNING_RATE = 0.3
+LARS_LEARNING_RATE = BATCH_SIZE / 256 * _LARS_BASE_LEARNING_RATE  # Specified in paper
 LARS_MOMENTUM = 0.9
 LARS_WEIGHT_DECAY = 1e-6
 
@@ -38,7 +42,7 @@ LR_SCHEDULER_WARMUP_EPOCHS = 10
 
 ## Projection head configuration. See `SimCLRProjectionHead` for more details.
 PROJECTION_HEAD_INPUT_DIM = 2048
-PROJECTION_HEAD_HIDDEN_DIM = 2048
+PROJECTION_HEAD_HIDDEN_DIM = 2048  # Input and hidden dim of same size
 PROJECTION_HEAD_OUTPUT_DIM = 128
 PROJECTION_HEAD_NUM_LAYERS = 2
 
@@ -47,7 +51,10 @@ PROJECTION_HEAD_NUM_LAYERS = 2
 ALL_HYPERPARAMETERS = {
     "batch_size": BATCH_SIZE,
     "epochs": EPOCHS,
-    "simclr_loss_temp": TEMPERATURE,
+    "linear_predictors_train_epochs": LINEAR_PREDICTORS_TRAIN_EPOCHS,
+    "linear_predictors_learning_rate": LINEAR_PREDICTORS_LEARNING_RATE,
+    "simclr_loss_temperature": SIMCLR_LOSS_TEMPERATURE,
+    "_lars_base_learning_rate": _LARS_BASE_LEARNING_RATE,
     "lars_learning_rate": LARS_LEARNING_RATE,
     "lars_momentum": LARS_MOMENTUM,
     "lars_weight_decay": LARS_WEIGHT_DECAY,
@@ -68,14 +75,14 @@ class SimCLR(nn.Module):
         # Resize input images to 224x224, as expected by the ResNet backbone
         self.resize = torchvision.transforms.Resize((224, 224))
 
+        # Remove the last fully connected layer to use ResNet as a backbone
         resnet = torchvision.models.resnet50()
         backbone = nn.Sequential(*list(resnet.children())[:-1])
         self.backbone = backbone
 
-        # Input and hidden dim of same size
         self.projection_head = SimCLRProjectionHead(
             input_dim=PROJECTION_HEAD_INPUT_DIM,
-            hidden_dim=PROJECTION_HEAD_HIDDEN_DIM,
+            hidden_dim=PROJECTION_HEAD_HIDDEN_DIM,  # Input and hidden dim of same size
             output_dim=PROJECTION_HEAD_OUTPUT_DIM,
             num_layers=PROJECTION_HEAD_NUM_LAYERS,
         )
@@ -92,34 +99,37 @@ class SimCLR(nn.Module):
             projected features.
         """
         x_r = self.resize(x)
-        h = self.backbone(x_r).flatten(start_dim=1)
+        h = self.backbone(x_r).flatten(start_dim=1)  # Don't flatten across samples
         z = self.projection_head(h)
         return z
 
 
 def train_simclr(*, log_to_wandb: bool = False) -> None:
-    """Training pipeline for SimCLR model
+    """Train the SimCLR model on the honeybee dataset.
 
     Args:
         log_to_wandb: Whether to log training progress to Weights & Biases (wandb).
     """
 
-    # Load training and validation data
-    train_dataloader = get_dataloader(mode="train", batch_size=BATCH_SIZE)
-    validate_dataloader = get_dataloader(mode="validate", batch_size=BATCH_SIZE)
+    # Prepare loading training and validation data
+    train_dataloader = get_dataloader(pairs=False, mode="train", batch_size=BATCH_SIZE)
+    validate_dataloader = get_dataloader(
+        pairs=False, mode="validate", batch_size=BATCH_SIZE
+    )
     train_pair_dataloader = get_dataloader(
         pairs=True, mode="train", batch_size=BATCH_SIZE
     )
     validate_pair_dataloader = get_dataloader(
         pairs=True, mode="validate", batch_size=BATCH_SIZE
     )
+
     # Prepare model
     model = SimCLR()
     model = model.to(DEVICE)  # Move model to target device
 
     # Prepare loss function
     criterion = NTXentLoss(
-        temperature=TEMPERATURE,
+        temperature=SIMCLR_LOSS_TEMPERATURE,
         gather_distributed=True,  # Use all negatives from all GPUs
     )
 
@@ -145,10 +155,10 @@ def train_simclr(*, log_to_wandb: bool = False) -> None:
     # Prepare learning rate scheduler
     warmup_iterations = LR_SCHEDULER_WARMUP_EPOCHS * len(train_pair_dataloader)
     total_iterations = EPOCHS * len(train_pair_dataloader)
-    scheduler = (
-        CosineWarmupScheduler(
-            optimizer, warmup_epochs=warmup_iterations, max_epochs=total_iterations
-        ),
+    scheduler = CosineWarmupScheduler(
+        optimizer,
+        warmup_epochs=warmup_iterations,  # Number of warmup training steps (not epochs)
+        max_epochs=total_iterations,  # Total number of training steps (not epochs)
     )
 
     # Train the model
