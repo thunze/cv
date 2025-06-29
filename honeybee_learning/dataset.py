@@ -14,8 +14,8 @@ from torch.utils.data import DataLoader, Dataset
 
 from .config import (
     DATALOADER_NUM_WORKERS,
-    SHUFFLE,
-    SEED,
+    DATASET_CREATE_SHUFFLE,
+    DATASET_CREATE_SHUFFLE_SEED,
     CROPS_PATH,
     TRAIN_RATIO,
     VALIDATION_RATIO,
@@ -222,8 +222,8 @@ def split_pairs():
                 })
 
     # Shuffle if necessary
-    if SHUFFLE:
-        random.seed(SEED)
+    if DATASET_CREATE_SHUFFLE:
+        random.seed(DATASET_CREATE_SHUFFLE_SEED)
         random.shuffle(pairs)
 
     # Calculate boundaries
@@ -256,8 +256,8 @@ def split_single():
 
     files = [f for f in os.listdir(CROPS_PATH) if f.endswith(".png")]
 
-    if SHUFFLE:
-        random.seed(SEED)
+    if DATASET_CREATE_SHUFFLE:
+        random.seed(DATASET_CREATE_SHUFFLE_SEED)
         random.shuffle(files)
 
     no_crops = len(files)
