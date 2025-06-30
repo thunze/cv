@@ -8,7 +8,6 @@ from collections import defaultdict
 from typing import Literal, NamedTuple
 
 import torch
-from lightly.data import LightlyDataset
 from torch.utils.data import DataLoader, Dataset
 from torchvision.io import decode_image
 
@@ -143,10 +142,8 @@ def get_dataloader(
 ) -> DataLoader:
     """Get a `DataLoader` for the honeybee dataset.
 
-    Uses a `HoneybeeDataset` or `HoneybeeImagePairDataset` under the hood, depending
-    on the `pairs` argument. If `pairs` is `True`, the `HoneybeeImagePairDataset` is
-    additionally wrapped in a `LightlyDataset` to support contrastive learning
-    techniques via the `lightly` library.
+    Uses a `HoneybeeImagePairDataset` under the hood if `pairs` is `True` or a
+    `HoneybeeDataset` if `pairs` is `False`.
 
     Args:
         pairs: Whether to return a dataloader for a dataset of image pairs instead of
@@ -160,8 +157,7 @@ def get_dataloader(
         A `DataLoader` object for the specified dataset split.
     """
     if pairs:
-        torch_dataset = HoneybeeImagePairDataset(mode=mode)
-        dataset = LightlyDataset.from_torch_dataset(torch_dataset)
+        dataset = HoneybeeImagePairDataset(mode=mode)
     else:
         dataset = HoneybeeDataset(mode=mode)
 
