@@ -73,13 +73,9 @@ class SimCLR(nn.Module):
     def __init__(self):
         super().__init__()
 
-        # Resize input images to 224x224, as expected by the ResNet backbone
-        self.resize = torchvision.transforms.Resize((224, 224))
-
         # Remove the last fully connected layer to use ResNet as a backbone
         resnet = torchvision.models.resnet50()
-        backbone = nn.Sequential(*list(resnet.children())[:-1])
-        self.backbone = backbone
+        self.backbone = nn.Sequential(*list(resnet.children())[:-1])
 
         self.projection_head = SimCLRProjectionHead(
             input_dim=PROJECTION_HEAD_INPUT_DIM,
@@ -100,10 +96,7 @@ class SimCLR(nn.Module):
             Output tensor of shape (..., feature dimensions), representing the
             projected features.
         """
-        x_r = self.resize(x)  # Resize
-        if x_r.shape[1] == 1:
-            x_rgb = x_r.repeat(1, 3, 1, 1)  # Convert 1-channel grayscale to RGB
-        h = self.backbone(x_rgb).flatten(start_dim=1)  # Don't flatten across samples
+        h = self.backbone(x).flatten(start_dim=1)  # Don't flatten across samples
         z = self.projection_head(h)
         return z
 

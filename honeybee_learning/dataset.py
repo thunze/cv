@@ -10,6 +10,7 @@ from typing import Literal, NamedTuple
 import torch
 from torch.utils.data import DataLoader, Dataset
 from torchvision.io import decode_image
+from torchvision.transforms.functional import resize
 
 from .config import (
     CROPS_PATH,
@@ -96,6 +97,13 @@ class HoneybeeDataset(Dataset):
 
         img = decode_image(path).float() / 255.0
         # img = torch.unsqueeze(img, 0)
+
+        # Resize input image to 224x224, as expected by the ResNet backbone
+        img = resize(img, (224, 224))
+
+        # Convert grayscale to RGB, as the ResNet backbone expects 3-channel input
+        img = img.repeat(3, 1, 1)
+
         info = parse_filename(filename)
 
         if info["recording_no"] == "1":
@@ -133,6 +141,14 @@ class HoneybeeImagePairDataset(Dataset):
         img2 = (
             decode_image(os.path.join(CROPS_PATH, pair["paired_frame"])).float() / 255.0
         )
+
+        # Resize input images to 224x224, as expected by the ResNet backbone
+        img1 = resize(img1, (224, 224))
+        img2 = resize(img2, (224, 224))
+
+        # Convert grayscale to RGB, as the ResNet backbone expects 3-channel input
+        img1 = img1.repeat(3, 1, 1)
+        img2 = img2.repeat(3, 1, 1)
 
         return HoneybeeImagePair(x1=img1, x2=img2)
 
