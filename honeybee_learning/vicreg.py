@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import torch
 import torchvision
 from lightly.loss import VICRegLoss
 from lightly.models.modules.heads import VICRegProjectionHead
@@ -125,6 +126,11 @@ def train_vicreg(*, log_to_wandb: bool = False) -> None:
 
     # Prepare model
     model = VICReg()
+
+    # Enable data parallelism if multiple GPUs are available
+    if DEVICE == "cuda" and torch.cuda.device_count() > 1:
+        model = nn.DataParallel(model)
+
     model = model.to(DEVICE)  # Move model to target device
 
     # Prepare loss function

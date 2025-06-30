@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
+import torch
 import torchvision
 from lightly.loss import NTXentLoss
 from lightly.models.modules import SimCLRProjectionHead
@@ -122,6 +123,11 @@ def train_simclr(*, log_to_wandb: bool = False) -> None:
 
     # Prepare model
     model = SimCLR()
+
+    # Enable data parallelism if multiple GPUs are available
+    if DEVICE == "cuda" and torch.cuda.device_count() > 1:
+        model = nn.DataParallel(model)
+
     model = model.to(DEVICE)  # Move model to target device
 
     # Prepare loss function
