@@ -47,7 +47,9 @@ def validate_epoch_validation_loss(
     batch: HoneybeeImagePair
 
     # One pass through the validation dataset
-    for batch in validate_pair_dataloader:
+    for i, batch in enumerate(validate_pair_dataloader):
+        print(f"\tValidating on batch {i + 1}/{len(validate_pair_dataloader)}...")
+
         # `x0` and `x1` are two views of the same honeybee.
         x0, x1 = batch
 
@@ -191,6 +193,7 @@ def evaluate_on_linear_predictors(
     optimizer = torch.optim.Adam(linear_evaluation_head.parameters(), lr=learning_rate)
 
     # --- Training ---
+    print(f"\tTraining linear evaluation head for {train_epochs} epochs...")
 
     linear_evaluation_head.train()  # Set the model to training mode
     linear_evaluation_head.zero_grad()  # Zero gradients, just to be safe
@@ -242,6 +245,7 @@ def evaluate_on_linear_predictors(
         avg_training_loss_epoch_angle = training_loss_epoch_angle / total_train_samples
 
     # --- Testing ---
+    print("\tTesting linear evaluation head on test dataset...")
 
     linear_evaluation_head.eval()  # Set the model to evaluation mode
     total_test_samples = len(test_dataloader.dataset)

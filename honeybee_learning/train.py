@@ -63,7 +63,7 @@ def train(
     # Prepare logging for the run
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     run_name = f"{model.__class__.__name__.lower()}_{timestamp}"
-    print(f"Starting training run {run_name!r}...\n")
+    print(f"Starting training run {run_name!r}...")
 
     # Initialize wandb run if enabled
     if log_to_wandb:
@@ -85,12 +85,15 @@ def train(
         training_loss_epoch = 0  # Aggregate training loss for the epoch
 
         # --- Training ---
+        print(f"\nEpoch {epoch + 1}/{epochs}: Training...")
 
         batch: HoneybeeImagePair
 
         # Train for one epoch
         # One pass through the training dataset
-        for batch in train_pair_dataloader:
+        for i, batch in enumerate(train_pair_dataloader):
+            print(f"\tTraining on batch {i + 1}/{len(train_pair_dataloader)}...")
+
             # `x0` and `x1` are two views of the same honeybee.
             x0, x1 = batch
 
@@ -116,6 +119,7 @@ def train(
         avg_training_loss_epoch = training_loss_epoch / len(train_pair_dataloader)
 
         # --- Validation ---
+        print(f"\nEpoch {epoch + 1}/{epochs}: Validating...")
 
         model.eval()  # Set the model to evaluation mode
 
@@ -164,12 +168,12 @@ def train(
         }
 
         # Log to standard output
-        print()  # Newline for better readability
+        print(f"\nEpoch {epoch + 1}/{epochs}: Results")
         for key, value in log_data.items():
             if isinstance(value, float):
-                print(f"{key}: {value:.5f}")
+                print(f"\t{key}: {value:.5f}")
             else:
-                print(f"{key}: {value}")
+                print(f"\t{key}: {value}")
 
         # Log to wandb if enabled
         if wandb_run is not None:
