@@ -70,6 +70,7 @@ def train(
         wandb_run = wandb.init(
             entity=WANDB_ENTITY,
             project=WANDB_PROJECT,
+            anonymous="must",  # Force anonymous login, needed to create anonymous key
             name=run_name,
             config=all_hyperparameters,
         )
