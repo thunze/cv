@@ -4,15 +4,16 @@ from __future__ import annotations
 
 import numpy as np
 import torchvision
-from config import DEVICE
-from dataset import get_dataloader
 from lightly.loss import NTXentLoss
 from lightly.models.modules import SimCLRProjectionHead
 from lightly.models.utils import get_weight_decay_parameters
 from lightly.utils.lars import LARS
 from lightly.utils.scheduler import CosineWarmupScheduler
 from torch import nn
-from train import train
+
+from .config import DEVICE
+from .dataset import get_dataloader
+from .train import train
 
 __all__ = ["train_simclr"]
 
