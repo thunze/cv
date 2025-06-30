@@ -20,7 +20,7 @@ __all__ = ["VICReg", "train_vicreg"]
 # Hyperparameters
 
 ## Basic training parameters
-BATCH_SIZE = 2048  # Lightly example: 256
+BATCH_SIZE = 512  # Lightly example: 256
 EPOCHS = 1000  # Lightly example: 10
 
 ## Parameters for validating the model on linear predictors
