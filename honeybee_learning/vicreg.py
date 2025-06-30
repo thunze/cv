@@ -139,7 +139,7 @@ def train_vicreg(*, log_to_wandb: bool = False) -> None:
     # Prepare optimizer
     # For performance reasons, don't apply weight decay to norm and bias parameters.
     params_weight_decay, params_no_weight_decay = get_weight_decay_parameters(
-        [model.backbone, model.projection_head]
+        [model.module.backbone, model.module.projection_head]
     )
     optimizer = LARS(
         [
