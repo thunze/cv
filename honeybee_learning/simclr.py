@@ -15,7 +15,7 @@ from .config import DEVICE
 from .dataset import get_dataloader
 from .train import train
 
-__all__ = ["train_simclr"]
+__all__ = ["SimCLR", "train_simclr"]
 
 
 # Hyperparameters
@@ -87,6 +87,7 @@ class SimCLR(nn.Module):
             output_dim=PROJECTION_HEAD_OUTPUT_DIM,
             num_layers=PROJECTION_HEAD_NUM_LAYERS,
         )
+        self.output_dim = PROJECTION_HEAD_OUTPUT_DIM  # For convenience
 
     def forward(self, x):
         """Forward pass through the model.

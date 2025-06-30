@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import NamedTuple
+from typing import TYPE_CHECKING, NamedTuple
 
 import numpy as np
 import torch
@@ -11,6 +11,10 @@ from torch.utils.data import DataLoader
 
 from .config import DEVICE
 from .dataset import HoneybeeImagePair, HoneybeeSample
+
+if TYPE_CHECKING:
+    from .simclr import SimCLR
+    from .vicreg import VICReg
 
 __all__ = [
     "validate_epoch_validation_loss",
@@ -96,7 +100,7 @@ class LinearPredictorsEvaluationResults(NamedTuple):
 
 
 def evaluate_on_linear_predictors(
-    model: nn.Module,
+    model: SimCLR | VICReg,
     train_dataloader: DataLoader,
     test_dataloader: DataLoader,
     total_number_of_bees: int,
@@ -175,7 +179,7 @@ def evaluate_on_linear_predictors(
             return id_logits, class_logit, angle_pred
 
     # Initialize the linear evaluation head
-    linear_evaluation_head = LinearEvaluationHead(model.projection_head.output_dim)
+    linear_evaluation_head = LinearEvaluationHead(model.output_dim)
     linear_evaluation_head = linear_evaluation_head.to(DEVICE)
 
     # Prepare loss functions for the three tasks
