@@ -141,3 +141,6 @@ result
 # ML checkpoints and data
 checkpoints/
 data/
+
+# Weights & Biases
+wandb/
