@@ -211,10 +211,11 @@ def evaluate_on_linear_predictors(
             x, id_, class_, angle = batch
 
             # Data conversions, move data to target device
+            # Note: PyTorch DataLoader already returns tensors
             x = x.to(DEVICE)
-            id_ = torch.tensor(id_, dtype=torch.long).to(DEVICE)
-            class_ = torch.tensor(class_, dtype=torch.float32).to(DEVICE)
-            angle = torch.tensor(angle, dtype=torch.float32).to(DEVICE)
+            id_ = id_.to(DEVICE)
+            class_ = class_.to(DEVICE, dtype=torch.float32)
+            angle = angle.to(DEVICE, dtype=torch.float32)
 
             # Forward pass
             z = model(x)
@@ -258,10 +259,11 @@ def evaluate_on_linear_predictors(
             x, id_, class_, angle = batch
 
             # Data conversions, move data to target device
+            # Note: PyTorch DataLoader already returns tensors
             x = x.to(DEVICE)
-            id_ = torch.tensor(id_, dtype=torch.long).to(DEVICE)
-            class_ = torch.tensor(class_, dtype=torch.float32).to(DEVICE)
-            angle = torch.tensor(angle, dtype=torch.float32).to(DEVICE)
+            id_ = id_.to(DEVICE)
+            class_ = class_.to(DEVICE, dtype=torch.float32)
+            angle = angle.to(DEVICE, dtype=torch.float32)
 
             # Collect targets for accuracy and MAE calculations
             id_targets.extend(id_.cpu().numpy())
