@@ -62,7 +62,7 @@ def train(
     """
     # Prepare logging for the run
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    run_name = f"{model.__class__.__name__}_{timestamp}"
+    run_name = f"{model.__class__.__name__.lower()}_{timestamp}"
     print(f"Starting training run {run_name!r}...\n")
 
     # Initialize wandb run if enabled
