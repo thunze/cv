@@ -92,7 +92,7 @@ def train(
         # One pass through the training dataset
         for batch in train_pair_dataloader:
             # `x0` and `x1` are two views of the same honeybee.
-            x0, x1, *_ = batch
+            x0, x1 = batch
 
             # Move data to target device
             x0 = x0.to(DEVICE)
