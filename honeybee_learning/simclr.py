@@ -25,7 +25,7 @@ BATCH_SIZE = 512  # Figure 9; small epoch size + large batch size = good perform
 EPOCHS = 1000  # Paper goes up to 800
 
 ## Parameters for validating the model on linear predictors
-LINEAR_PREDICTORS_TRAIN_EPOCHS = 800  # Number of epochs for which to train predictors
+LINEAR_PREDICTORS_TRAIN_EPOCHS = 3  # Number of epochs for which to train predictors
 # Learning rate to use for predictors; makes no difference when batch size = 4096
 LINEAR_PREDICTORS_LEARNING_RATE = 0.075 * np.sqrt(BATCH_SIZE)
 
