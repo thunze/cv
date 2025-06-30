@@ -21,7 +21,7 @@ __all__ = ["VICReg", "train_vicreg"]
 
 ## Basic training parameters
 BATCH_SIZE = 512  # Lightly example: 256
-EPOCHS = 1000  # Lightly example: 10
+EPOCHS = 10  # Lightly example: 10
 
 ## Parameters for validating the model on linear predictors
 LINEAR_PREDICTORS_TRAIN_EPOCHS = 3  # Number of epochs for which to train predictors
