@@ -24,7 +24,7 @@ __all__ = ["train"]
 
 
 def train(
-    model: nn.Module,
+    model: nn.DataParallel,
     train_dataloader: DataLoader,
     validate_dataloader: DataLoader,
     train_pair_dataloader: DataLoader,
@@ -62,7 +62,7 @@ def train(
     """
     # Prepare logging for the run
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    run_name = f"{model.__class__.__name__.lower()}_{timestamp}"
+    run_name = f"{model.module.__class__.__name__.lower()}_{timestamp}"
     print(f"Starting training run {run_name!r}...")
 
     # Initialize wandb run if enabled

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import numpy as np
-import torch
 import torchvision
 from lightly.loss import NTXentLoss
 from lightly.models.modules import SimCLRProjectionHead
@@ -123,11 +122,7 @@ def train_simclr(*, log_to_wandb: bool = False) -> None:
 
     # Prepare model
     model = SimCLR()
-
-    # Enable data parallelism if multiple GPUs are available
-    if DEVICE == "cuda" and torch.cuda.device_count() > 1:
-        model = nn.DataParallel(model)
-
+    model = nn.DataParallel(model)  # Enable data parallelism for multi-GPU training
     model = model.to(DEVICE)  # Move model to target device
 
     # Prepare loss function
@@ -139,7 +134,7 @@ def train_simclr(*, log_to_wandb: bool = False) -> None:
     # Prepare optimizer
     # For performance reasons, don't apply weight decay to norm and bias parameters.
     params_weight_decay, params_no_weight_decay = get_weight_decay_parameters(
-        [model.backbone, model.projection_head]
+        [model.module.backbone, model.module.projection_head]
     )
     optimizer = LARS(
         [
