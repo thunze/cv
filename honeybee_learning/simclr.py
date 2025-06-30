@@ -99,10 +99,10 @@ class SimCLR(nn.Module):
             Output tensor of shape (..., feature dimensions), representing the
             projected features.
         """
-        x_r = self.resize(x)
-        if x_r.shape[1] == 1:  # resNet awaits 3 channels as input
-            x_r = x_r.repeat(1, 3, 1, 1)
-        h = self.backbone(x_r).flatten(start_dim=1)  # Don't flatten across samples
+        x_r = self.resize(x)  # Resize
+        if x_r.shape[1] == 1:
+            x_rgb = x_r.repeat(1, 3, 1, 1)  # Convert 1-channel grayscale to RGB
+        h = self.backbone(x_rgb).flatten(start_dim=1)  # Don't flatten across samples
         z = self.projection_head(h)
         return z
 
