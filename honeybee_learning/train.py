@@ -10,15 +10,9 @@ import wandb
 from torch import nn
 from torch.utils.data import DataLoader
 
-from .config import (
-    CHECKPOINTS_PATH,
-    DEVICE,
-    TOTAL_NUMBER_OF_BEES,
-    WANDB_ENTITY,
-    WANDB_PROJECT,
-)
+from .config import CHECKPOINTS_PATH, DEVICE, WANDB_ENTITY, WANDB_PROJECT
 from .dataset import HoneybeeImagePair
-from .validate import evaluate_on_linear_predictors, validate_epoch_validation_loss
+from .validate import validate_epoch_validation_loss
 
 __all__ = ["train"]
 
@@ -130,16 +124,6 @@ def train(
                 model, validate_pair_dataloader, criterion
             )
 
-        # We need gradients for training, therefore not wrapped in `torch.no_grad()`
-        lin_eval_results = evaluate_on_linear_predictors(
-            model,
-            train_dataloader,  # Use train dataset for training
-            validate_dataloader,  # Use validation dataset for testing
-            TOTAL_NUMBER_OF_BEES,
-            linear_predictors_train_epochs,
-            linear_predictors_learning_rate,
-        )
-
         model.train()  # Set the model back to training mode
 
         # --- Logging ---
@@ -149,23 +133,6 @@ def train(
             "train/learning_rate": optimizer.param_groups[0]["lr"],
             "train/loss": avg_training_loss_epoch,
             "validate/loss": avg_validation_loss_epoch,
-            "validate/lin_eval/id/train_loss_last_epoch": (
-                lin_eval_results.id_train_loss_last_epoch
-            ),
-            "validate/lin_eval/id/test_loss": lin_eval_results.id_test_loss,
-            "validate/lin_eval/id/test_accuracy": lin_eval_results.id_test_accuracy,
-            "validate/lin_eval/class/train_loss_last_epoch": (
-                lin_eval_results.class_train_loss_last_epoch
-            ),
-            "validate/lin_eval/class/test_loss": lin_eval_results.class_test_loss,
-            "validate/lin_eval/class/test_accuracy": (
-                lin_eval_results.class_test_accuracy
-            ),
-            "validate/lin_eval/angle/train_loss_last_epoch": (
-                lin_eval_results.angle_train_loss_last_epoch
-            ),
-            "validate/lin_eval/angle/test_loss": lin_eval_results.angle_test_loss,
-            "validate/lin_eval/angle/test_mae": lin_eval_results.angle_test_mae,
         }
 
         # Log to standard output
