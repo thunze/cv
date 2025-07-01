@@ -15,6 +15,7 @@ __all__ = [
     "VALIDATION_RATIO",
     "DEVICE",
     "DATALOADER_NUM_WORKERS",
+    "CHECKPOINT_EVERY_N_EPOCHS",
     "WANDB_ENTITY",
     "WANDB_PROJECT",
 ]
@@ -35,6 +36,7 @@ VALIDATION_RATIO = 0.4  # Amount of the data to use for validation
 # Training and validation
 DEVICE = "cuda"  # Device to train and run the model on, typically a GPU
 DATALOADER_NUM_WORKERS = 8  # Number of processes used by `DataLoader` instances
+CHECKPOINT_EVERY_N_EPOCHS = 10  # Save model checkpoint every N epochs
 
 # Weights & Biases (wandb) configuration
 WANDB_ENTITY = "thunze"  # Team name

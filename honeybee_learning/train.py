@@ -10,7 +10,13 @@ import wandb
 from torch import nn
 from torch.utils.data import DataLoader
 
-from .config import CHECKPOINTS_PATH, DEVICE, WANDB_ENTITY, WANDB_PROJECT
+from .config import (
+    CHECKPOINT_EVERY_N_EPOCHS,
+    CHECKPOINTS_PATH,
+    DEVICE,
+    WANDB_ENTITY,
+    WANDB_PROJECT,
+)
 from .dataset import HoneybeeImagePair
 from .validate import validate_epoch_validation_loss
 
@@ -122,8 +128,19 @@ def train(
 
         model.train()  # Set the model back to training mode
 
-        # --- Logging ---
+        # --- Tracking ---
 
+        print(f"\nEpoch {epoch + 1}/{epochs}: Tracking...")
+
+        # Save model state after every Nth epoch and after the last epoch
+        if (epoch + 1) % CHECKPOINT_EVERY_N_EPOCHS == 0 or epoch == epochs - 1:
+            print(f"\tSaving model checkpoint for epoch {epoch + 1}...")
+            torch.save(
+                model.state_dict(),
+                CHECKPOINTS_PATH / f"{run_name}_epoch_{epoch + 1}.pth",
+            )
+
+        # Gather data to log
         log_data = {
             "train/epoch": epoch,
             "train/learning_rate": optimizer.param_groups[0]["lr"],
@@ -132,7 +149,6 @@ def train(
         }
 
         # Log to standard output
-        print(f"\nEpoch {epoch + 1}/{epochs}: Results")
         for key, value in log_data.items():
             if isinstance(value, float):
                 print(f"\t{key}: {value:.5f}")
@@ -144,9 +160,6 @@ def train(
             wandb_run.log(log_data)
 
     # --- Finalization ---
-
-    # Save state of trained model
-    torch.save(model.state_dict(), CHECKPOINTS_PATH / f"{run_name}.pth")
 
     # Finish wandb run if enabled
     if wandb_run is not None:
