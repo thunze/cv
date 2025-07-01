@@ -22,7 +22,7 @@ __all__ = ["SimCLR", "train_simclr"]
 
 ## Basic training parameters
 BATCH_SIZE = 512  # Figure 9; small epoch size + large batch size = good performance
-EPOCHS = 10  # Paper goes up to 800
+EPOCHS = 800  # Paper goes up to 800
 
 ## Parameters for validating the model on linear predictors
 LINEAR_PREDICTORS_TRAIN_EPOCHS = 3  # Number of epochs for which to train predictors
@@ -42,10 +42,10 @@ LARS_WEIGHT_DECAY = 1e-6
 LR_SCHEDULER_WARMUP_EPOCHS = 10
 
 ## Projection head configuration. See `SimCLRProjectionHead` for more details.
-PROJECTION_HEAD_INPUT_DIM = 2048
+PROJECTION_HEAD_INPUT_DIM = 512
 PROJECTION_HEAD_HIDDEN_DIM = 2048  # Input and hidden dim of same size
 PROJECTION_HEAD_OUTPUT_DIM = 128
-PROJECTION_HEAD_NUM_LAYERS = 2
+PROJECTION_HEAD_NUM_LAYERS = 3
 
 
 # Hyperparameters to log for the run
@@ -72,7 +72,7 @@ class SimCLR(nn.Module):
         super().__init__()
 
         # Remove the last fully connected layer to use ResNet as a backbone
-        resnet = torchvision.models.resnet50()
+        resnet = torchvision.models.resnet18()
         self.backbone = nn.Sequential(*list(resnet.children())[:-1])
 
         self.projection_head = SimCLRProjectionHead(

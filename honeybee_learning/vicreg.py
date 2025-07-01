@@ -21,7 +21,7 @@ __all__ = ["VICReg", "train_vicreg"]
 
 ## Basic training parameters
 BATCH_SIZE = 512  # Lightly example: 256
-EPOCHS = 10  # Lightly example: 10
+EPOCHS = 800  # Lightly example: 10
 
 ## Parameters for validating the model on linear predictors
 LINEAR_PREDICTORS_TRAIN_EPOCHS = 3  # Number of epochs for which to train predictors
@@ -43,9 +43,9 @@ LR_SCHEDULER_WARMUP_EPOCHS = 10  # Number of warmup epochs
 LR_SCHEDULE_COSINE_MIN = 1e-2  # Minimum cosine LR factor, scales from 0.002 to 0.2
 
 ## Projection head configuration. See `VICRegProjectionHead` for more details.
-PROJECTION_HEAD_INPUT_DIM = 2048
-PROJECTION_HEAD_HIDDEN_DIM = 8192
-PROJECTION_HEAD_OUTPUT_DIM = 8192
+PROJECTION_HEAD_INPUT_DIM = 512
+PROJECTION_HEAD_HIDDEN_DIM = 2048
+PROJECTION_HEAD_OUTPUT_DIM = 128
 PROJECTION_HEAD_NUM_LAYERS = 3
 
 
@@ -76,7 +76,7 @@ class VICReg(nn.Module):
         super().__init__()
 
         # Remove the last fully connected layer to use ResNet as a backbone
-        resnet = torchvision.models.resnet50()
+        resnet = torchvision.models.resnet18()
         self.backbone = nn.Sequential(*list(resnet.children())[:-1])
 
         self.projection_head = VICRegProjectionHead(
