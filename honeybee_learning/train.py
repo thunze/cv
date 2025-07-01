@@ -61,6 +61,12 @@ def train(
     else:
         wandb_run = None
 
+    # Save hyperparameters for the run
+    CHECKPOINTS_PATH.mkdir(parents=True, exist_ok=True)
+    (CHECKPOINTS_PATH / f"{run_name}.json").write_text(
+        json.dumps(all_hyperparameters, indent=4, ensure_ascii=False)
+    )
+
     # Train the model
     model.train()  # Set the model to training mode
     model.zero_grad()  # Zero the gradients before training, just to be safe
@@ -139,14 +145,8 @@ def train(
 
     # --- Finalization ---
 
-    # Prepare saving model and hyperparameters
-    CHECKPOINTS_PATH.mkdir(parents=True, exist_ok=True)
-
-    # Save trained model and serialized model hyperparameters
+    # Save state of trained model
     torch.save(model.state_dict(), CHECKPOINTS_PATH / f"{run_name}.pth")
-    (CHECKPOINTS_PATH / f"{run_name}.json").write_text(
-        json.dumps(all_hyperparameters, indent=4, ensure_ascii=False)
-    )
 
     # Finish wandb run if enabled
     if wandb_run is not None:
