@@ -21,7 +21,7 @@ __all__ = ["SimCLR", "train_simclr"]
 # Hyperparameters
 
 ## Basic training parameters
-BATCH_SIZE = 512  # Figure 9; small epoch size + large batch size = good performance
+BATCH_SIZE = 2048  # Figure 9; small epoch size + large batch size = good performance
 EPOCHS = 800  # Paper goes up to 800
 
 ## Parameters for validating the model on linear predictors
