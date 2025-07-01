@@ -25,7 +25,7 @@ CHECKPOINTS_PATH = Path("/scratch/cv-course2025/group7/checkpoints")
 CROPS_PATH = Path("/scratch/cv-course2025/group7/crops128/")
 
 # Data
-TOTAL_NUMBER_OF_BEES = 874  # Total number of unique bees in the honeybee dataset
+TOTAL_NUMBER_OF_BEES = 876  # Total number of unique bees in the honeybee dataset
 MAX_FRAME_DIFFERENCE = 5  # Max. number of frames that count bee as temporally adjacent
 DATASET_CREATE_SHUFFLE = True  # Whether to use shuffling in dataset creation or not
 DATASET_CREATE_SHUFFLE_SEED = 42  # Seed to use when shuffling in dataset creation
