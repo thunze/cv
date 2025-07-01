@@ -19,16 +19,12 @@ __all__ = ["train"]
 
 def train(
     model: nn.DataParallel,
-    train_dataloader: DataLoader,
-    validate_dataloader: DataLoader,
     train_pair_dataloader: DataLoader,
     validate_pair_dataloader: DataLoader,
     criterion: nn.Module,
     optimizer: torch.optim.Optimizer,
     scheduler: torch.optim.lr_scheduler._LRScheduler,
     epochs: int,
-    linear_predictors_train_epochs: int,
-    linear_predictors_learning_rate: float,
     all_hyperparameters: dict[str, float | int | str],
     *,
     log_to_wandb: bool = False,
@@ -37,8 +33,6 @@ def train(
 
     Args:
         model: The model to train.
-        train_dataloader: `DataLoader` providing the training `HoneybeeDataset`.
-        validate_dataloader: `DataLoader` providing the validation `HoneybeeDataset`.
         train_pair_dataloader: `DataLoader` providing the training
             `HoneybeeImagePairDataset`.
         validate_pair_dataloader: `DataLoader` providing the validation
@@ -47,10 +41,6 @@ def train(
         optimizer: Optimizer to use for training.
         scheduler: Learning rate scheduler to use during training.
         epochs: Number of epochs to train `model` for.
-        linear_predictors_train_epochs: Number of epochs for which to train the
-            linear evaluation head for validation after each epoch of training `model`.
-        linear_predictors_learning_rate: Learning rate used for training the linear
-            evaluation head for validation after each epoch of training `model`.
         all_hyperparameters: Dictionary of all hyperparameters to log.
         log_to_wandb: Whether to log training progress to Weights & Biases (wandb).
     """

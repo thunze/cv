@@ -52,8 +52,6 @@ PROJECTION_HEAD_NUM_LAYERS = 2
 ALL_HYPERPARAMETERS = {
     "batch_size": BATCH_SIZE,
     "epochs": EPOCHS,
-    "linear_predictors_train_epochs": LINEAR_PREDICTORS_TRAIN_EPOCHS,
-    "linear_predictors_learning_rate": LINEAR_PREDICTORS_LEARNING_RATE,
     "simclr_loss_temperature": SIMCLR_LOSS_TEMPERATURE,
     "_lars_base_learning_rate": _LARS_BASE_LEARNING_RATE,
     "lars_learning_rate": LARS_LEARNING_RATE,
@@ -109,10 +107,6 @@ def train_simclr(*, log_to_wandb: bool = False) -> None:
     """
 
     # Prepare loading training and validation data
-    train_dataloader = get_dataloader(pairs=False, mode="train", batch_size=BATCH_SIZE)
-    validate_dataloader = get_dataloader(
-        pairs=False, mode="validate", batch_size=BATCH_SIZE
-    )
     train_pair_dataloader = get_dataloader(
         pairs=True, mode="train", batch_size=BATCH_SIZE
     )
@@ -162,16 +156,12 @@ def train_simclr(*, log_to_wandb: bool = False) -> None:
     # Train the model
     train(
         model=model,
-        train_dataloader=train_dataloader,
-        validate_dataloader=validate_dataloader,
         train_pair_dataloader=train_pair_dataloader,
         validate_pair_dataloader=validate_pair_dataloader,
         criterion=criterion,
         optimizer=optimizer,
         scheduler=scheduler,
         epochs=EPOCHS,
-        linear_predictors_train_epochs=LINEAR_PREDICTORS_TRAIN_EPOCHS,
-        linear_predictors_learning_rate=LINEAR_PREDICTORS_LEARNING_RATE,
         all_hyperparameters=ALL_HYPERPARAMETERS,
         log_to_wandb=log_to_wandb,
     )

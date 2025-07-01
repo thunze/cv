@@ -53,8 +53,6 @@ PROJECTION_HEAD_NUM_LAYERS = 3
 ALL_HYPERPARAMETERS = {
     "batch_size": BATCH_SIZE,
     "epochs": EPOCHS,
-    "linear_predictors_train_epochs": LINEAR_PREDICTORS_TRAIN_EPOCHS,
-    "linear_predictors_learning_rate": LINEAR_PREDICTORS_LEARNING_RATE,
     "vicreg_loss_lambda": VICREG_LOSS_LAMBDA,
     "vicreg_loss_mu": VICREG_LOSS_MU,
     "vicreg_loss_nu": VICREG_LOSS_NU,
@@ -112,10 +110,6 @@ def train_vicreg(*, log_to_wandb: bool = False) -> None:
         log_to_wandb: Whether to log training progress to Weights & Biases (wandb).
     """
     # Prepare loading training and validation data
-    train_dataloader = get_dataloader(pairs=False, mode="train", batch_size=BATCH_SIZE)
-    validate_dataloader = get_dataloader(
-        pairs=False, mode="validate", batch_size=BATCH_SIZE
-    )
     train_pair_dataloader = get_dataloader(
         pairs=True, mode="train", batch_size=BATCH_SIZE
     )
@@ -169,16 +163,12 @@ def train_vicreg(*, log_to_wandb: bool = False) -> None:
     # Train the model
     train(
         model=model,
-        train_dataloader=train_dataloader,
-        validate_dataloader=validate_dataloader,
         train_pair_dataloader=train_pair_dataloader,
         validate_pair_dataloader=validate_pair_dataloader,
         criterion=criterion,
         optimizer=optimizer,
         scheduler=scheduler,
         epochs=EPOCHS,
-        linear_predictors_train_epochs=LINEAR_PREDICTORS_TRAIN_EPOCHS,
-        linear_predictors_learning_rate=LINEAR_PREDICTORS_LEARNING_RATE,
         all_hyperparameters=ALL_HYPERPARAMETERS,
         log_to_wandb=log_to_wandb,
     )
