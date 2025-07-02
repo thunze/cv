@@ -6,7 +6,7 @@ import os
 import random
 from collections import defaultdict
 from typing import Literal, NamedTuple
-
+import glob
 import torch
 from torch.utils.data import DataLoader, Dataset
 from torchvision.io import decode_image
@@ -81,21 +81,27 @@ class HoneybeeDataset(Dataset):
 
         split_mapping = split_single()
 
-        self.filenames = [
+        all_png_files = glob.glob(os.path.join(CROPS_PATH, "**", "*.png"), recursive=True)
+
+
+        self.filepaths = [
             f
-            for f in os.listdir(CROPS_PATH)
-            if f.endswith(".png") and split_mapping[f] == mode
+            for f in all_png_files
+            if os.path.basename(f) in split_mapping and split_mapping[os.path.basename(f)] == mode
         ]
 
     def __len__(self):
-        return len(self.filenames)
+        return len(self.filepaths)
 
     def __getitem__(self, index: int) -> HoneybeeSample:
         """Get a `HoneybeeSample` from the dataset by index."""
-        filename = self.filenames[index]
-        path = os.path.join(CROPS_PATH, filename)
+        filepath = self.filepaths[index]
+        filename = os.path.basename(filepath)
+        info = parse_filename(filename)
 
-        img = decode_image(path).float() / 255.0
+
+
+        img = decode_image(filepath).float() / 255.0
         # img = torch.unsqueeze(img, 0)
 
         # Resize input image to 224x224, as expected by the ResNet backbone
@@ -104,7 +110,7 @@ class HoneybeeDataset(Dataset):
         # Convert grayscale to RGB, as the ResNet backbone expects 3-channel input
         img = img.repeat(3, 1, 1)
 
-        info = parse_filename(filename)
+
 
         if info["recording_no"] == "1":
             bee_id = int(info["bee_no"])
@@ -137,10 +143,13 @@ class HoneybeeImagePairDataset(Dataset):
     def __getitem__(self, index: int) -> HoneybeeImagePair:
         """Get a `HoneybeeImagePair` from the dataset by index."""
         pair = self.pairs[index]
-        img1 = decode_image(os.path.join(CROPS_PATH, pair["frame"])).float() / 255.0
-        img2 = (
-            decode_image(os.path.join(CROPS_PATH, pair["paired_frame"])).float() / 255.0
-        )
+        info_img1 = parse_filename(pair["frame"])
+        img1_path = os.path.join(CROPS_PATH, info_img1["recording_no"], info_img1["bee_no"], pair["frame"])
+        img1 = decode_image(img1_path).float() / 255.0
+
+        info_img2 = parse_filename(pair["paired_frame"])
+        img2_path = os.path.join(CROPS_PATH, info_img2["recording_no"], info_img2["bee_no"], pair["paired_frame"])
+        img2 = decode_image(img2_path).float() / 255.0
 
         # Resize input images to 224x224, as expected by the ResNet backbone
         img1 = resize(img1, (224, 224))
@@ -204,7 +213,13 @@ def split_pairs():
         )
 
     # Get list of files
-    files = [f for f in os.listdir(CROPS_PATH) if f.endswith(".png")]
+
+    all_png_files = glob.glob(os.path.join(CROPS_PATH, "**", "*.png"), recursive=True)
+
+    files = [
+        os.path.basename(f)
+        for f in all_png_files
+    ]
     bee_to_files = defaultdict(list)
 
     for f in files:
@@ -267,7 +282,12 @@ def split_single():
             "room for a test split."
         )
 
-    files = [f for f in os.listdir(CROPS_PATH) if f.endswith(".png")]
+    all_png_files = glob.glob(os.path.join(CROPS_PATH, "**", "*.png"), recursive=True)
+
+    files = [
+        os.path.basename(f)
+        for f in all_png_files
+    ]
 
     if DATASET_CREATE_SHUFFLE:
         random.seed(DATASET_CREATE_SHUFFLE_SEED)
