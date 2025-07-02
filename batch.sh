@@ -1,7 +1,7 @@
 #!/bin/bash -l
 #SBATCH --partition=gpu
 #SBATCH -G h100:1
-#SBATCH --mem=128gb
+#SBATCH --mem=256gb
 #SBATCH --time=0:30:00
 
 set -e
