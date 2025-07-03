@@ -7,6 +7,7 @@ from pathlib import Path
 __all__ = [
     "CHECKPOINTS_PATH",
     "CROPS_PATH",
+    "METADATA_PATH",
     "TOTAL_NUMBER_OF_BEES",
     "MAX_FRAME_DIFFERENCE",
     "DATASET_CREATE_SHUFFLE",
@@ -23,19 +24,20 @@ __all__ = [
 
 # Paths
 CHECKPOINTS_PATH = Path("/scratch/cv-course2025/group7/checkpoints")
-CROPS_PATH = Path("/scratch/cv-course2025/group7/crops128/")
+CROPS_PATH = Path("/scratch/cv-course2025/group7/crops128/crops.npy")
+METADATA_PATH = Path("/scratch/cv-course2025/group7/crops128/metadata224.npy")
 
 # Data
 TOTAL_NUMBER_OF_BEES = 876  # Total number of unique bees in the honeybee dataset
 MAX_FRAME_DIFFERENCE = 5  # Max. number of frames that count bee as temporally adjacent
 DATASET_CREATE_SHUFFLE = True  # Whether to use shuffling in dataset creation or not
 DATASET_CREATE_SHUFFLE_SEED = 42  # Seed to use when shuffling in dataset creation
-TRAIN_RATIO = 0.4  # Amount of the data to use for training
-VALIDATION_RATIO = 0.4  # Amount of the data to use for validation
+TRAIN_RATIO = 0.7  # Amount of the data to use for training
+VALIDATION_RATIO = 0.15  # Amount of the data to use for validation
 
 # Training and validation
 DEVICE = "cuda"  # Device to train and run the model on, typically a GPU
-DATALOADER_NUM_WORKERS = 16  # Number of processes used by `DataLoader` instances
+DATALOADER_NUM_WORKERS = 0  # Number of processes used by `DataLoader` instances
 CHECKPOINT_EVERY_N_EPOCHS = 10  # Save model checkpoint every N epochs
 
 # Weights & Biases (wandb) configuration

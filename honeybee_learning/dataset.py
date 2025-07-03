@@ -2,19 +2,20 @@
 
 from __future__ import annotations
 
-import glob
 import os
 import random
 from collections import defaultdict
 from typing import Literal, NamedTuple
-
 import torch
 from torch.utils.data import DataLoader, Dataset
 from torchvision.io import decode_image
 from torchvision.transforms.functional import resize
+from numpy import load, where, all
+import numpy as np
 
 from .config import (
     CROPS_PATH,
+    METADATA_PATH,
     DATALOADER_NUM_WORKERS,
     DATASET_CREATE_SHUFFLE,
     DATASET_CREATE_SHUFFLE_SEED,
@@ -77,50 +78,71 @@ class HoneybeeDataset(Dataset):
     """
 
     def __init__(self, *, mode: Literal["train", "validate", "test"]):
-        self.samples = []
+
+        # Load images and metadata from file
+        self.images = load(CROPS_PATH)
+        self.metadata = load(METADATA_PATH)
         self.mode = mode
 
-        split_mapping = split_single()
+        np.random.seed(DATASET_CREATE_SHUFFLE_SEED)
 
-        all_png_files = glob.glob(
-            os.path.join(CROPS_PATH, "**", "*.png"), recursive=True
-        )
+        # Create a permutation of indices
+        indices = np.arange(self.images.shape[0])
+        np.random.seed(42)
+        np.random.shuffle(indices)
 
-        self.filepaths = [
-            f
-            for f in all_png_files
-            if os.path.basename(f) in split_mapping
-            and split_mapping[os.path.basename(f)] == mode
-        ]
+        # Shuffle both arrays using the same indices
+        self.images = self.images[indices]
+        self.metadata = self.metadata[indices]
+
+
+        # Get bounds for modes
+        num = self.images.shape[0]
+        n_train = int(TRAIN_RATIO * num)
+        n_val = int(VALIDATION_RATIO * num)
+
+        # Sample images for the correct mode
+        if mode == "train":
+            self.images = self.images[:n_train]
+            self.metadata = self.metadata[:n_train]
+        elif mode == "validate":
+            self.images = self.images[n_train:n_train+n_val]
+            self.metadata = self.metadata[n_train:n_train+n_val]
+        else:
+            self.images = self.images[n_train+n_val:]
+            self.metadata = self.metadata[n_train+n_val:]
 
     def __len__(self):
-        return len(self.filepaths)
+        return len(self.metadata)
 
     def __getitem__(self, index: int) -> HoneybeeSample:
         """Get a `HoneybeeSample` from the dataset by index."""
-        filepath = self.filepaths[index]
-        filename = os.path.basename(filepath)
-        info = parse_filename(filename)
 
-        img = decode_image(filepath).float() / 255.0
-        # img = torch.unsqueeze(img, 0)
+        img = self.images[index]
+        metadata = self.metadata[index]
 
-        # Resize input image to 224x224, as expected by the ResNet backbone
-        img = resize(img, (224, 224))
-
-        # Convert grayscale to RGB, as the ResNet backbone expects 3-channel input
+        # Image operations: Convert to tensor and float, divide by 255.0. Then convert to RGB.
+        img = torch.from_numpy(img).float() / 255.0
         img = img.repeat(3, 1, 1)
+        print(img.shape)
 
-        if info["recording_no"] == "1":
-            bee_id = int(info["bee_no"])
+        # Get metadata
+        rec_no = int(metadata[0])
+        bee_no = int(metadata[2])
+        class_id = int(metadata[3])
+        angle = int(metadata[4])
+
+        # Adjust bee number to be a continuous number instead of per recording
+        if rec_no == 1:
+            bee_id = bee_no
         else:
-            bee_id = 361 + int(info["bee_no"])
+            bee_id = 361 + bee_no
 
         return HoneybeeSample(
             x=img,
             id_=bee_id,
-            class_=int(info["class_no"]),
-            angle=int(info["angle"]),
+            class_=class_id,
+            angle=angle,
         )
 
 
@@ -134,39 +156,37 @@ class HoneybeeImagePairDataset(Dataset):
     """
 
     def __init__(self, *, mode: Literal["train", "validate", "test"]):
-        self.pairs = [p for p in split_pairs() if p["set"] == mode]
+
+        # Load images and metadata from file
+        self.images = load(CROPS_PATH)
+        self.metadata = load(METADATA_PATH)
+
+        # Build set of pairs to use for selected mode and seed
+        self.pairs = [p for p in split_pairs(self.metadata) if p["set"] == mode]
 
     def __len__(self):
         return len(self.pairs)
 
     def __getitem__(self, index: int) -> HoneybeeImagePair:
         """Get a `HoneybeeImagePair` from the dataset by index."""
+
+        # Get a pair and their indices for loading them
         pair = self.pairs[index]
-        info_img1 = parse_filename(pair["frame"])
-        img1_path = os.path.join(
-            CROPS_PATH, info_img1["recording_no"], info_img1["bee_no"], pair["frame"]
-        )
-        img1 = decode_image(img1_path).float() / 255.0
+        index_img1 = pair["first_index"]
+        index_img2 = pair["second_index"]
 
-        info_img2 = parse_filename(pair["paired_frame"])
-        img2_path = os.path.join(
-            CROPS_PATH,
-            info_img2["recording_no"],
-            info_img2["bee_no"],
-            pair["paired_frame"],
-        )
-        img2 = decode_image(img2_path).float() / 255.0
+        img1 = self.images[index_img1]
+        img2 = self.images[index_img2]
 
-        # Resize input images to 224x224, as expected by the ResNet backbone
-        img1 = resize(img1, (224, 224))
-        img2 = resize(img2, (224, 224))
+        # Convert to tensor and float, then divide by 255.0
+        img1 = torch.from_numpy(img1).float() / 255.0
+        img2 = torch.from_numpy(img2).float() / 255.0
 
-        # Convert grayscale to RGB, as the ResNet backbone expects 3-channel input
+        # Convert to RGB
         img1 = img1.repeat(3, 1, 1)
         img2 = img2.repeat(3, 1, 1)
 
         return HoneybeeImagePair(x1=img1, x2=img2)
-
 
 def get_dataloader(
     *, pairs: bool, mode: Literal["train", "validate", "test"], batch_size: int
@@ -201,7 +221,7 @@ def get_dataloader(
     )
 
 
-def split_pairs():
+def split_pairs(metadata_array):
     """Create and return a train-validate-test split of pairs of temporally adjacent
     honeybee images from the honeybee dataset.
     """
@@ -218,33 +238,39 @@ def split_pairs():
             "room for a test split."
         )
 
-    # Get list of files
+    # Build look up dictionary to find next frames fast
+    index = defaultdict(list)
+    for idx,entry in enumerate(metadata_array):
+        # Key = (rec_no, bee_no)
+        key = (entry[0], entry[2])
+        # value = (index in metadata, entry)
+        index[key].append((idx, entry))
 
-    all_png_files = glob.glob(os.path.join(CROPS_PATH, "**", "*.png"), recursive=True)
+    # Sort dict by frame_no
+    for key in index:
+        index[key].sort(key=lambda x: x[0])
 
-    files = [os.path.basename(f) for f in all_png_files]
-    bee_to_files = defaultdict(list)
-
-    for f in files:
-        parts = f.replace(".png", "").split("_")
-        rec = int(parts[0])
-        bee = int(parts[2])
-        bee_to_files[(rec, bee)].append(f)
-
+    # Compute pairs by checking frame difference between temporally adjacent images
     pairs = []
-
-    for (rec, bee), frame_files in bee_to_files.items():
+    for (rec_no, bee_no), frames in index.items():
         # If the bee has only one frame available, skip because we want pairs
-        if len(frame_files) == 1:
+        if len(frames) == 1:
             continue
-        frame_files.sort()
-        for i in range(len(frame_files) - 1):
-            filename1 = frame_files[i]
-            filename2 = frame_files[i + 1]
-            frame_no1 = int(parse_filename(filename1)["frame_no"])
-            frame_no2 = int(parse_filename(filename2)["frame_no"])
-            if frame_no2 - frame_no1 <= MAX_FRAME_DIFFERENCE:
-                pairs.append({"frame": filename1, "paired_frame": filename2})
+
+        for i in range(len(frames) -1):
+            # Get indices and frame numbers for the current pair
+            idx1, first_frame = frames[i]
+            idx2, second_frame = frames[i + 1]
+            first_frame_no = first_frame[1]
+            second_frame_no = second_frame[1]
+
+            if second_frame_no - first_frame_no <= MAX_FRAME_DIFFERENCE:
+                pairs.append({
+                    "frame": first_frame,
+                    "paired_frame": second_frame,
+                    "first_index": idx1,
+                    "second_index" : idx2
+                })
 
     # Shuffle if necessary
     if DATASET_CREATE_SHUFFLE:
@@ -266,66 +292,3 @@ def split_pairs():
             pair["set"] = "test"
 
     return pairs
-
-
-def split_single():
-    """Create and return a train-validate-test split of single honeybee images from
-    the honeybee dataset.
-    """
-    # Validate input ratios
-    if not (0 < TRAIN_RATIO < 1):
-        raise ValueError("train_ratio must be between 0 and 1 (exclusive).")
-
-    if not (0 <= VALIDATION_RATIO < 1):
-        raise ValueError("val_ratio must be between 0 (inclusive) and 1 (exclusive).")
-
-    if TRAIN_RATIO + VALIDATION_RATIO >= 1.0:
-        raise ValueError(
-            "The sum of train_ratio and val_ratio must be less than 1.0 to leave "
-            "room for a test split."
-        )
-
-    all_png_files = glob.glob(os.path.join(CROPS_PATH, "**", "*.png"), recursive=True)
-
-    files = [os.path.basename(f) for f in all_png_files]
-
-    if DATASET_CREATE_SHUFFLE:
-        random.seed(DATASET_CREATE_SHUFFLE_SEED)
-        random.shuffle(files)
-
-    no_crops = len(files)
-    n_train = int(TRAIN_RATIO * no_crops)
-    n_val = int(VALIDATION_RATIO * no_crops)
-
-    split_map = {}
-    for i, f in enumerate(files):
-        if i < n_train:
-            split_map[f] = "train"
-        elif i < n_train + n_val:
-            split_map[f] = "validate"
-        else:
-            split_map[f] = "test"
-
-    return split_map
-
-
-def parse_filename(filename: str):
-    """Parse a filename of the format
-    `recordingNo_frameNo_beeNo_posX_posY_classNo_angle.png` into a dict containing
-    this information.
-
-    Args:
-        filename: The filename to parse.
-
-    Returns:
-        A dict containing the corresponding `recording_no`, `frame_no`, `bee_no`,
-        `class_no` and `angle`.
-    """
-    parts = filename.replace(".png", "").split("_")
-    return {
-        "recording_no": parts[0],
-        "frame_no": parts[1],
-        "bee_no": parts[2],
-        "class_no": parts[5],
-        "angle": parts[6],
-    }
