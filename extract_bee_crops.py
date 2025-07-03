@@ -3,7 +3,7 @@ import cv2
 import logging
 import traceback
 
-
+import numpy as np
 
 
 def extract_trajectory_information(trajectories_path):
@@ -143,15 +143,22 @@ def extract_save_crops(bee_detections_by_frame, frames_path,crops_path, bee_numb
     # Make sure that crop dir exists
     os.makedirs(crops_path, exist_ok=True)
 
+    crops = []
+    metadata = []
+
+
     # Loop through all (rec_no, frame_no) pairs and extract all (or the single one) bees for that frame, so frames only have to be opened once each
-    for (rec_no, frame_no), bees in sorted(bee_detections_by_frame.items()):
+    for i, ((rec_no, frame_no), bees) in enumerate(sorted(bee_detections_by_frame.items())):
 
         frame_name = f"frame{str(frame_no).rjust(4, '0')}.png"
         frame_path = os.path.join(frames_path, f"rec{rec_no}", frame_name)
         frame_img = cv2.imread(frame_path, cv2.IMREAD_GRAYSCALE)
+
         if frame_img is None:
             logging.info(f"Warning: Could not load frame {frame_path}")
             continue
+
+
         #logging.info(f"{len(bees)} bees found in frame {frame_no}, rec {rec_no}.")
         for bee in bees:
             #
@@ -164,15 +171,28 @@ def extract_save_crops(bee_detections_by_frame, frames_path,crops_path, bee_numb
             class_no = bee["class_no"]
             angle = bee["angle"]
 
-            output_name = f"{rec_no}_{frame_no}_{bee_no}_{pos_x}_{pos_y}_{class_no}_{angle}.png"
-            output_path = os.path.join(crops_path, output_name)
-
             # Get crop and save it
             #logging.info(f"Cropping bee no. {bee_no}, rec no. {rec_no}, frame no. {frame_no}")
             crop = crop_bee(frame_img, pos_x, pos_y, crop_size=128)
 
-            cv2.imwrite(output_path, crop)
+            # Resize crop to (224,224)
+            resized = cv2.resize(crop, (224,224), interpolation=cv2.INTER_AREA)
+            crops.append(resized)
+
+            metadata.append((
+                int(rec_no),
+                int(frame_no),
+                int(bee_no),
+                int(class_no),
+                int(angle)
+            ))
+
         logging.info(f"Finished croppings for: Recording no. {rec_no}, frame no. {frame_no} ")
+
+    crops_array = np.array(crops, dtype=np.uint8)
+    metadata_array = np.array(metadata, dtype=np.uint16)
+
+    return crops_array,metadata_array
 
 def main():
     # Initialize logging
@@ -188,7 +208,6 @@ def main():
     frames_path = "/scratch/cv-course2025/group7/frames/"
     crops_path = "/scratch/cv-course2025/group7/crops128/"
 
-
     logging.info("Starting trajectory extraction")
     bee_detections_by_frame = extract_trajectory_information(trajectories_path)
 
@@ -198,7 +217,10 @@ def main():
 
 
     logging.info(f"Starting cropping.")
-    extract_save_crops(bee_detections_by_frame, frames_path,crops_path)
+    crops_array, metadata_array = extract_save_crops(bee_detections_by_frame, frames_path,crops_path)
+
+    np.save(os.path.join(crops_path, "crops.npy"), crops_array)
+    np.save(os.path.join(crops_path, "metadata224.npy"), metadata_array)
 
     logging.info("Program execution done.")
 
