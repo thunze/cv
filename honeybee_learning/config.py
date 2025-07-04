@@ -37,7 +37,7 @@ VALIDATION_RATIO = 0.15  # Amount of the data to use for validation
 
 # Training and validation
 DEVICE = "cuda"  # Device to train and run the model on, typically a GPU
-DATALOADER_NUM_WORKERS = 0  # Number of processes used by `DataLoader` instances
+DATALOADER_NUM_WORKERS = 16  # Number of processes used by `DataLoader` instances
 CHECKPOINT_EVERY_N_EPOCHS = 10  # Save model checkpoint every N epochs
 
 # Weights & Biases (wandb) configuration
