@@ -2,24 +2,22 @@
 
 from __future__ import annotations
 
-import os
 import random
 from collections import defaultdict
 from typing import Literal, NamedTuple
-import torch
-from torch.utils.data import DataLoader, Dataset
-from torchvision.io import decode_image
-from torchvision.transforms.functional import resize
-from numpy import load, where, all
+
 import numpy as np
+import torch
+from numpy import load
+from torch.utils.data import DataLoader, Dataset
 
 from .config import (
     CROPS_PATH,
-    METADATA_PATH,
     DATALOADER_NUM_WORKERS,
     DATASET_CREATE_SHUFFLE,
     DATASET_CREATE_SHUFFLE_SEED,
     MAX_FRAME_DIFFERENCE,
+    METADATA_PATH,
     TRAIN_RATIO,
     VALIDATION_RATIO,
 )
@@ -78,7 +76,6 @@ class HoneybeeDataset(Dataset):
     """
 
     def __init__(self, *, mode: Literal["train", "validate", "test"]):
-
         # Load images and metadata from file
         self.images = load(CROPS_PATH)
         self.metadata = load(METADATA_PATH)
@@ -95,7 +92,6 @@ class HoneybeeDataset(Dataset):
         self.images = self.images[indices]
         self.metadata = self.metadata[indices]
 
-
         # Get bounds for modes
         num = self.images.shape[0]
         n_train = int(TRAIN_RATIO * num)
@@ -106,11 +102,11 @@ class HoneybeeDataset(Dataset):
             self.images = self.images[:n_train]
             self.metadata = self.metadata[:n_train]
         elif mode == "validate":
-            self.images = self.images[n_train:n_train+n_val]
-            self.metadata = self.metadata[n_train:n_train+n_val]
+            self.images = self.images[n_train : n_train + n_val]
+            self.metadata = self.metadata[n_train : n_train + n_val]
         else:
-            self.images = self.images[n_train+n_val:]
-            self.metadata = self.metadata[n_train+n_val:]
+            self.images = self.images[n_train + n_val :]
+            self.metadata = self.metadata[n_train + n_val :]
 
     def __len__(self):
         return len(self.metadata)
@@ -121,7 +117,8 @@ class HoneybeeDataset(Dataset):
         img = self.images[index]
         metadata = self.metadata[index]
 
-        # Image operations: Convert to tensor and float, divide by 255.0. Then convert to RGB.
+        # Image operations: Convert to tensor and float, divide by 255.0.
+        # Then convert to RGB.
         img = torch.from_numpy(img).float() / 255.0
         img = img.repeat(3, 1, 1)
         print(img.shape)
@@ -156,7 +153,6 @@ class HoneybeeImagePairDataset(Dataset):
     """
 
     def __init__(self, *, mode: Literal["train", "validate", "test"]):
-
         # Load images and metadata from file
         self.images = load(CROPS_PATH)
         self.metadata = load(METADATA_PATH)
@@ -187,6 +183,7 @@ class HoneybeeImagePairDataset(Dataset):
         img2 = img2.repeat(3, 1, 1)
 
         return HoneybeeImagePair(x1=img1, x2=img2)
+
 
 def get_dataloader(
     *, pairs: bool, mode: Literal["train", "validate", "test"], batch_size: int
@@ -240,7 +237,7 @@ def split_pairs(metadata_array):
 
     # Build look up dictionary to find next frames fast
     index = defaultdict(list)
-    for idx,entry in enumerate(metadata_array):
+    for idx, entry in enumerate(metadata_array):
         # Key = (rec_no, bee_no)
         key = (entry[0], entry[2])
         # value = (index in metadata, entry)
@@ -257,7 +254,7 @@ def split_pairs(metadata_array):
         if len(frames) == 1:
             continue
 
-        for i in range(len(frames) -1):
+        for i in range(len(frames) - 1):
             # Get indices and frame numbers for the current pair
             idx1, first_frame = frames[i]
             idx2, second_frame = frames[i + 1]
@@ -265,12 +262,14 @@ def split_pairs(metadata_array):
             second_frame_no = second_frame[1]
 
             if second_frame_no - first_frame_no <= MAX_FRAME_DIFFERENCE:
-                pairs.append({
-                    "frame": first_frame,
-                    "paired_frame": second_frame,
-                    "first_index": idx1,
-                    "second_index" : idx2
-                })
+                pairs.append(
+                    {
+                        "frame": first_frame,
+                        "paired_frame": second_frame,
+                        "first_index": idx1,
+                        "second_index": idx2,
+                    }
+                )
 
     # Shuffle if necessary
     if DATASET_CREATE_SHUFFLE:

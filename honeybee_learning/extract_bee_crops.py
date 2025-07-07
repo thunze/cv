@@ -1,8 +1,10 @@
-import os
-import cv2
+from __future__ import annotations
+
 import logging
+import os
 import traceback
 
+import cv2
 import numpy as np
 
 
@@ -20,14 +22,13 @@ def extract_trajectory_information(trajectories_path):
 
     for root, dirs, files in os.walk(trajectories_path):
         for file in files:
-            if file.endswith('.txt'):
-
+            if file.endswith(".txt"):
                 rec_no = root[-1]
                 bee_no = file.replace(".txt", "")
                 file_path = os.path.join(root, file)
                 try:
                     # Open .txt file and extract all information
-                    with open(file_path, 'r', encoding='utf-8') as f:
+                    with open(file_path, "r", encoding="utf-8") as f:
                         for line in f:
                             line_parts = line.strip().split(",")
                             frame_no = int(line_parts[0])
@@ -39,13 +40,15 @@ def extract_trajectory_information(trajectories_path):
                             key = (rec_no, frame_no)
                             if key not in detections_by_frame:
                                 detections_by_frame[key] = []
-                            detections_by_frame[key].append({
-                                "bee_no": bee_no,
-                                "pos_x": pos_x,
-                                "pos_y": pos_y,
-                                "class_no": class_no,
-                                "angle": angle
-                            })
+                            detections_by_frame[key].append(
+                                {
+                                    "bee_no": bee_no,
+                                    "pos_x": pos_x,
+                                    "pos_y": pos_y,
+                                    "class_no": class_no,
+                                    "angle": angle,
+                                }
+                            )
                 except Exception as e:
                     logging.exception(f"Error reading {file_path}: {e}")
     return detections_by_frame
@@ -60,7 +63,7 @@ def extract_frames_from_video(videos_path, frames_path):
     """
     for root, dirs, files in os.walk(videos_path):
         for file in files:
-            if file.endswith('.mp4'):
+            if file.endswith(".mp4"):
                 video_path = os.path.join(root, file)
                 rec_no = file.replace(".mp4", "")[-1]
 
@@ -70,19 +73,26 @@ def extract_frames_from_video(videos_path, frames_path):
                 else:
                     os.makedirs(frames_path + "rec" + rec_no, exist_ok=True)
                     vidcap = cv2.VideoCapture(video_path)
-                    count = 0;
+                    count = 0
                     success = True
                     while success:
                         try:
                             success, image = vidcap.read()
                             if success and image is not None:
-                                cv2.imwrite(f"{frames_path}/rec{rec_no}/frame%04d.png" % count, image)
+                                cv2.imwrite(
+                                    f"{frames_path}/rec{rec_no}/frame%04d.png" % count,
+                                    image,
+                                )
                                 count += 1
                             else:
                                 break
                         except Exception as e:
-                            logging.exception("Exception while extracting frames: " + traceback.format_exc(e))
+                            logging.exception(
+                                "Exception while extracting frames: "
+                                + traceback.format_exc(e)
+                            )
                 logging.info("Finished extracting frames for recording " + rec_no)
+
 
 def crop_bee(img, y, x, crop_size=256):
     """
@@ -131,7 +141,9 @@ def crop_bee(img, y, x, crop_size=256):
     return crop
 
 
-def extract_save_crops(bee_detections_by_frame, frames_path,crops_path, bee_number = None):
+def extract_save_crops(
+    bee_detections_by_frame, frames_path, crops_path, bee_number=None
+):
     """
     Given a dictionary of bee detections, goes through all frames and crops all bees for that frame. If bee_number is specified, only extracts crops for that bee.
     :param bee_detections_by_frame: Dictionary of bee detections
@@ -146,10 +158,10 @@ def extract_save_crops(bee_detections_by_frame, frames_path,crops_path, bee_numb
     crops = []
     metadata = []
 
-
     # Loop through all (rec_no, frame_no) pairs and extract all (or the single one) bees for that frame, so frames only have to be opened once each
-    for i, ((rec_no, frame_no), bees) in enumerate(sorted(bee_detections_by_frame.items())):
-
+    for i, ((rec_no, frame_no), bees) in enumerate(
+        sorted(bee_detections_by_frame.items())
+    ):
         frame_name = f"frame{str(frame_no).rjust(4, '0')}.png"
         frame_path = os.path.join(frames_path, f"rec{rec_no}", frame_name)
         frame_img = cv2.imread(frame_path, cv2.IMREAD_GRAYSCALE)
@@ -158,8 +170,7 @@ def extract_save_crops(bee_detections_by_frame, frames_path,crops_path, bee_numb
             logging.info(f"Warning: Could not load frame {frame_path}")
             continue
 
-
-        #logging.info(f"{len(bees)} bees found in frame {frame_no}, rec {rec_no}.")
+        # logging.info(f"{len(bees)} bees found in frame {frame_no}, rec {rec_no}.")
         for bee in bees:
             #
             if (bee_number != None) & (bee["bee_no"] != bee_number):
@@ -172,32 +183,31 @@ def extract_save_crops(bee_detections_by_frame, frames_path,crops_path, bee_numb
             angle = bee["angle"]
 
             # Get crop and save it
-            #logging.info(f"Cropping bee no. {bee_no}, rec no. {rec_no}, frame no. {frame_no}")
+            # logging.info(f"Cropping bee no. {bee_no}, rec no. {rec_no}, frame no. {frame_no}")
             crop = crop_bee(frame_img, pos_x, pos_y, crop_size=128)
 
             # Resize crop to (224,224)
-            resized = cv2.resize(crop, (224,224), interpolation=cv2.INTER_AREA)
+            resized = cv2.resize(crop, (224, 224), interpolation=cv2.INTER_AREA)
             crops.append(resized)
 
-            metadata.append((
-                int(rec_no),
-                int(frame_no),
-                int(bee_no),
-                int(class_no),
-                int(angle)
-            ))
+            metadata.append(
+                (int(rec_no), int(frame_no), int(bee_no), int(class_no), int(angle))
+            )
 
-        logging.info(f"Finished croppings for: Recording no. {rec_no}, frame no. {frame_no} ")
+        logging.info(
+            f"Finished croppings for: Recording no. {rec_no}, frame no. {frame_no} "
+        )
 
     crops_array = np.array(crops, dtype=np.uint8)
     metadata_array = np.array(metadata, dtype=np.uint16)
 
-    return crops_array,metadata_array
+    return crops_array, metadata_array
+
 
 def main():
     # Initialize logging
     logging.basicConfig(
-        filename=f"/scratch/cv-course2025/group7/processing128.log",  # Save logs to a file
+        filename="/scratch/cv-course2025/group7/processing128.log",  # Save logs to a file
         level=logging.INFO,  # Log levels: DEBUG, INFO, WARNING, ERROR, CRITICAL
         format="%(asctime)s - %(levelname)s - %(message)s",  # Log format
     )
@@ -211,18 +221,22 @@ def main():
     logging.info("Starting trajectory extraction")
     bee_detections_by_frame = extract_trajectory_information(trajectories_path)
 
-    logging.info("Trajectory extraction finished, starting frame extraction from videos")
+    logging.info(
+        "Trajectory extraction finished, starting frame extraction from videos"
+    )
     extract_frames_from_video(vid_path, frames_path)
     logging.info("Frame extraction finished.")
 
-
-    logging.info(f"Starting cropping.")
-    crops_array, metadata_array = extract_save_crops(bee_detections_by_frame, frames_path,crops_path)
+    logging.info("Starting cropping.")
+    crops_array, metadata_array = extract_save_crops(
+        bee_detections_by_frame, frames_path, crops_path
+    )
 
     np.save(os.path.join(crops_path, "crops.npy"), crops_array)
     np.save(os.path.join(crops_path, "metadata224.npy"), metadata_array)
 
     logging.info("Program execution done.")
+
 
 if __name__ == main():
     main()
