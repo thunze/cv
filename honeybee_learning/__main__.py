@@ -6,6 +6,8 @@ from argparse import ArgumentParser
 
 from honeybee_learning import simclr, vicreg
 
+__all__ = ["main"]
+
 
 def main():
     """Main function."""
