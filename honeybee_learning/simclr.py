@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import numpy as np
 import torchvision
 from lightly.loss import NTXentLoss
 from lightly.models.modules import SimCLRProjectionHead
