@@ -1,3 +1,14 @@
+"""Data preprocessing script.
+
+Extracts bee crops from video frames based on trajectory information and saves them
+as two numpy arrays: One for the crops and one for the metadata.
+
+We're explicitly saving the crops as one large binary file instead of multiple images
+because RAMSES seems to throttle I/O operations on `/scratch` when handling many
+small files, which previously made the process of loading crops for training very
+slow.
+"""
+
 from __future__ import annotations
 
 import logging
@@ -7,20 +18,26 @@ import traceback
 import cv2
 import numpy as np
 
+__all__ = ["main"]
+
 
 def extract_trajectory_information(trajectories_path):
-    """
-    Given a path to a folder containing txt. files with trajectory information, extracts this information
-    and saves it in a dictionary.
-    :param trajectories_path: Path to the folder containing the trajectory files
-    :return: A dictionary containing detection information, grouped by (recording_no, frame_no). Individual bees are
-    stored in a dictionary containing bee_no, pos_x, pos_y, class_no, angle.
+    """Given a path to a folder containing `.txt` files with trajectory information,
+    extract this information and save it in a dictionary.
+
+    Args:
+        trajectories_path: Path to the folder containing the trajectory files.
+
+    Returns:
+        A dictionary containing detection information, grouped by
+        `(recording_no, frame_no)`. Individual bees are stored in a dictionary
+        containing `bee_no`, `pos_x`, `pos_y`, `class_no` and `angle`.
     """
 
     # Dictionary to store detections grouped by (recording_no, frame_no)
     detections_by_frame = {}
 
-    for root, dirs, files in os.walk(trajectories_path):
+    for root, _, files in os.walk(trajectories_path):
         for file in files:
             if file.endswith(".txt"):
                 rec_no = root[-1]
@@ -55,19 +72,23 @@ def extract_trajectory_information(trajectories_path):
 
 
 def extract_frames_from_video(videos_path, frames_path):
-    """
-    Extracts all frames from all videos in the given video_path and saves them to frames_path.
+    """Extract all frames from all videos in the given `video_path` and save them to
+    `frames_path`.
+
     In case the folder for that recording already exists, that video gets skipped.
-    :param videos_path: Path to the folder containing the videos.
-    :param frames_path: Path to the folder the frame images are supposed to be saved in.
+
+    Args:
+        videos_path: Path to the folder containing the videos.
+        frames_path: Path to the folder the frame images are supposed to be saved in.
     """
-    for root, dirs, files in os.walk(videos_path):
+    for root, _, files in os.walk(videos_path):
         for file in files:
             if file.endswith(".mp4"):
                 video_path = os.path.join(root, file)
                 rec_no = file.replace(".mp4", "")[-1]
 
-                # If folder already exists, assume that all frames were successfully extracted, might change this later to be more robust
+                # If folder already exists, assume that all frames were successfully
+                # extracted, might change this later to be more robust
                 if os.path.isdir(frames_path + "rec" + rec_no):
                     logging.info(f"Skipping video {file}")
                 else:
@@ -80,7 +101,7 @@ def extract_frames_from_video(videos_path, frames_path):
                             success, image = vidcap.read()
                             if success and image is not None:
                                 cv2.imwrite(
-                                    f"{frames_path}/rec{rec_no}/frame%04d.png" % count,
+                                    f"{frames_path}/rec{rec_no}/frame{count:04d}.png",
                                     image,
                                 )
                                 count += 1
@@ -95,18 +116,22 @@ def extract_frames_from_video(videos_path, frames_path):
 
 
 def crop_bee(img, y, x, crop_size=256):
-    """
-    Crops a square region of size crop_size x crop_size centered at (x, y)
-    from a grayscale image. Moves the crop window if necessary to stay within bounds.
+    """Crop a square region of size `crop_size` x `crop_size` centered at `(y, x)`
+    from a grayscale image.
+
+    Moves the crop window if necessary to stay within bounds.
+
+    Note that x and y coordinates are swapped because of mislabeling in the dataset,
+    so `x` is the horizontal coordinate and `y` is the vertical coordinate.
 
     Args:
-        img (np.ndarray): The input image.
-        y (int): X-coordinate of the center point.
-        x (int): Y-coordinate of the center point.
+        img: The input image.
+        y: X-coordinate of the center point.
+        x: Y-coordinate of the center point.
         crop_size (int): Size of the crop (default is 256).
 
     Returns:
-        numpy.ndarray: Cropped image of shape (crop_size, crop_size)
+        Cropped image of shape `(crop_size, crop_size)`.
     """
     if img is None:
         raise ValueError("Image not found or failed to load.")
@@ -144,21 +169,25 @@ def crop_bee(img, y, x, crop_size=256):
 def extract_save_crops(
     bee_detections_by_frame, frames_path, crops_path, bee_number=None
 ):
-    """
-    Given a dictionary of bee detections, goes through all frames and crops all bees for that frame. If bee_number is specified, only extracts crops for that bee.
-    :param bee_detections_by_frame: Dictionary of bee detections
-    :param frames_path: Path to folder containing the frames
-    :param crops_path: Path to save the cropped images to
-    :param bee_number: Optional, to extract crops for only one bee. For testing purposes
-    """
+    """Given a dictionary of bee detections, go through all frames and crop all bees
+    for that frame.
 
+    If `bee_number` is specified, only extracts crops for that bee.
+
+    Args:
+        bee_detections_by_frame: Dictionary of bee detections.
+        frames_path: Path to folder containing the frames.
+        crops_path: Path to save the cropped images to.
+        bee_number: Optional, to extract crops for only one bee. For testing purposes.
+    """
     # Make sure that crop dir exists
     os.makedirs(crops_path, exist_ok=True)
 
     crops = []
     metadata = []
 
-    # Loop through all (rec_no, frame_no) pairs and extract all (or the single one) bees for that frame, so frames only have to be opened once each
+    # Loop through all (rec_no, frame_no) pairs and extract all (or the single one)
+    # bees for that frame, so frames only have to be opened once each
     for i, ((rec_no, frame_no), bees) in enumerate(
         sorted(bee_detections_by_frame.items())
     ):
@@ -172,8 +201,7 @@ def extract_save_crops(
 
         # logging.info(f"{len(bees)} bees found in frame {frame_no}, rec {rec_no}.")
         for bee in bees:
-            #
-            if (bee_number != None) & (bee["bee_no"] != bee_number):
+            if bee_number is not None and bee["bee_no"] != bee_number:
                 continue  # Skip bees that are not the target one
 
             pos_x = bee["pos_x"]
@@ -183,7 +211,9 @@ def extract_save_crops(
             angle = bee["angle"]
 
             # Get crop and save it
-            # logging.info(f"Cropping bee no. {bee_no}, rec no. {rec_no}, frame no. {frame_no}")
+            # logging.info(
+            #     f"Cropping bee no. {bee_no}, rec no. {rec_no}, frame no. {frame_no}"
+            # )
             crop = crop_bee(frame_img, pos_x, pos_y, crop_size=128)
 
             # Resize crop to (224,224)
@@ -205,9 +235,10 @@ def extract_save_crops(
 
 
 def main():
+    """Main function to extract crops from bee detection trajectories."""
     # Initialize logging
     logging.basicConfig(
-        filename="/scratch/cv-course2025/group7/processing128.log",  # Save logs to a file
+        filename="/scratch/cv-course2025/group7/processing128.log",  # Save logs to file
         level=logging.INFO,  # Log levels: DEBUG, INFO, WARNING, ERROR, CRITICAL
         format="%(asctime)s - %(levelname)s - %(message)s",  # Log format
     )
@@ -238,5 +269,5 @@ def main():
     logging.info("Program execution done.")
 
 
-if __name__ == main():
+if __name__ == "__main__":
     main()
