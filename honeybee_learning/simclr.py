@@ -24,11 +24,6 @@ __all__ = ["SimCLR", "train_simclr"]
 BATCH_SIZE = 2048  # Figure 9; small epoch size + large batch size = good performance
 EPOCHS = 100  # Paper goes up to 800
 
-## Parameters for validating the model on linear predictors
-LINEAR_PREDICTORS_TRAIN_EPOCHS = 3  # Number of epochs for which to train predictors
-# Learning rate to use for predictors; makes no difference when batch size = 4096
-LINEAR_PREDICTORS_LEARNING_RATE = 0.075 * np.sqrt(BATCH_SIZE)
-
 ## Loss parameters
 SIMCLR_LOSS_TEMPERATURE = 0.1  # Default: 0.1
 

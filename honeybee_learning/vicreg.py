@@ -23,10 +23,6 @@ __all__ = ["VICReg", "train_vicreg"]
 BATCH_SIZE = 2048  # Lightly example: 256
 EPOCHS = 100  # Lightly example: 10
 
-## Parameters for validating the model on linear predictors
-LINEAR_PREDICTORS_TRAIN_EPOCHS = 3  # Number of epochs for which to train predictors
-LINEAR_PREDICTORS_LEARNING_RATE = 1e-3  # Learning rate to use for predictors
-
 ## Loss parameters
 VICREG_LOSS_LAMBDA = 25  # Variance loss weight
 VICREG_LOSS_MU = 25  # Covariance loss weight
