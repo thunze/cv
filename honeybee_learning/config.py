@@ -7,7 +7,11 @@ from pathlib import Path
 __all__ = [
     "CHECKPOINTS_PATH",
     "CROPS_PATH",
+    "FRAMES_PATH",
     "METADATA_PATH",
+    "PREPROCESSING_LOG_PATH",
+    "TRAJECTORIES_PATH",
+    "VIDEOS_PATH",
     "TOTAL_NUMBER_OF_BEES",
     "MAX_FRAME_DIFFERENCE",
     "DATASET_CREATE_SHUFFLE",
@@ -25,7 +29,11 @@ __all__ = [
 # Paths
 CHECKPOINTS_PATH = Path("/scratch/cv-course2025/group7/checkpoints")
 CROPS_PATH = Path("/scratch/cv-course2025/group7/crops128/crops.npy")
+FRAMES_PATH = Path("/scratch/cv-course2025/group7/frames")
 METADATA_PATH = Path("/scratch/cv-course2025/group7/crops128/metadata224.npy")
+PREPROCESSING_LOG_PATH = Path("/scratch/cv-course2025/group7/processing128.log")
+TRAJECTORIES_PATH = Path("/scratch/cv-course2025/group7/trajectories")
+VIDEOS_PATH = Path("/scratch/cv-course2025/group7/videos")
 
 # Data
 TOTAL_NUMBER_OF_BEES = 876  # Total number of unique bees in the honeybee dataset

@@ -18,7 +18,14 @@ import traceback
 import cv2
 import numpy as np
 
-from .config import CROPS_PATH, METADATA_PATH
+from .config import (
+    CROPS_PATH,
+    FRAMES_PATH,
+    METADATA_PATH,
+    PREPROCESSING_LOG_PATH,
+    TRAJECTORIES_PATH,
+    VIDEOS_PATH,
+)
 
 __all__ = ["main"]
 
@@ -232,28 +239,23 @@ def main():
     """Main function to extract crops from bee detection trajectories."""
     # Initialize logging
     logging.basicConfig(
-        filename="/scratch/cv-course2025/group7/processing128.log",  # Save logs to file
+        filename=PREPROCESSING_LOG_PATH,  # Save logs to file
         level=logging.INFO,  # Log levels: DEBUG, INFO, WARNING, ERROR, CRITICAL
         format="%(asctime)s - %(levelname)s - %(message)s",  # Log format
     )
 
     logging.info("Starting trajectory extraction")
-    trajectories_path = "/scratch/cv-course2025/group7/trajectories/"
-    vid_path = "/scratch/cv-course2025/group7/videos/"
-    frames_path = "/scratch/cv-course2025/group7/frames/"
-
-    logging.info("Starting trajectory extraction")
-    bee_detections_by_frame = extract_trajectory_information(trajectories_path)
+    bee_detections_by_frame = extract_trajectory_information(TRAJECTORIES_PATH)
 
     logging.info(
         "Trajectory extraction finished, starting frame extraction from videos"
     )
-    extract_frames_from_video(vid_path, frames_path)
+    extract_frames_from_video(VIDEOS_PATH, FRAMES_PATH)
     logging.info("Frame extraction finished.")
 
     logging.info("Starting cropping.")
     crops_array, metadata_array = extract_save_crops(
-        bee_detections_by_frame, frames_path
+        bee_detections_by_frame, FRAMES_PATH
     )
 
     # Make sure that `CROPS_PATH` exists
