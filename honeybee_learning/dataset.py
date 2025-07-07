@@ -114,7 +114,6 @@ class HoneybeeDataset(Dataset):
         # Then convert to RGB.
         img = torch.from_numpy(img).float() / 255.0
         img = img.repeat(3, 1, 1)
-        print(img.shape)
 
         # Get metadata
         rec_no = int(metadata[0])
