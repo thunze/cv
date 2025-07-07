@@ -71,42 +71,35 @@ class HoneybeeDataset(Dataset):
     and orientation angle.
 
     Args:
-        mode: The dataset split to load. Can be 'train', 'validate', or 'test'.
+        mode: The dataset split to load. Can be 'train_and_validate', or 'test'.
             This determines which predefined subset of the dataset to use.
     """
 
-    def __init__(self, *, mode: Literal["train", "validate", "test"]):
+    def __init__(self, *, mode: Literal["train_and_validate", "test"]):
         # Load images and metadata from file
         self.images = load(CROPS_PATH)
         self.metadata = load(METADATA_PATH)
         self.mode = mode
 
-        np.random.seed(DATASET_CREATE_SHUFFLE_SEED)
+        # Get all pairs that belong to training and validation split
+        self.pairs_train = [p for p in split_pairs(self.metadata) if p["set"] == "train"]
+        self.pairs_val = [p for p in split_pairs(self.metadata) if p["set"] == "validate"]
 
-        # Create a permutation of indices
-        indices = np.arange(self.images.shape[0])
-        np.random.seed(42)
-        np.random.shuffle(indices)
+        # Collect all indices that appear in pairs_train and pairs_val
+        all_pair_indices = {
+            idx for p in self.pairs_train + self.pairs_val for idx in (p["first_index"], p["second_index"])
+        }
 
-        # Shuffle both arrays using the same indices
-        self.images = self.images[indices]
-        self.metadata = self.metadata[indices]
-
-        # Get bounds for modes
-        num = self.images.shape[0]
-        n_train = int(TRAIN_RATIO * num)
-        n_val = int(VALIDATION_RATIO * num)
-
-        # Sample images for the correct mode
-        if mode == "train":
-            self.images = self.images[:n_train]
-            self.metadata = self.metadata[:n_train]
-        elif mode == "validate":
-            self.images = self.images[n_train : n_train + n_val]
-            self.metadata = self.metadata[n_train : n_train + n_val]
+        # If mode is train and validate, we use all images that appear in the training and validation splits of the pair dataset
+        if mode == "train_and_validate":
+            self.indices = sorted(all_pair_indices)
+        # Otherwise we use all images that do not appear in the train and val splits
         else:
-            self.images = self.images[n_train + n_val :]
-            self.metadata = self.metadata[n_train + n_val :]
+            self.indices = [i for i in range(len(self.images)) if i not in all_pair_indices]
+
+        # Get images and metadata for those indices
+        self.images = [self.images[i] for i in self.indices]
+        self.metadata = [self.metadata[i] for i in self.indices]
 
     def __len__(self):
         return len(self.metadata)
@@ -212,7 +205,7 @@ def get_dataloader(
     return DataLoader(
         dataset,
         batch_size=batch_size,
-        shuffle=(mode == "train"),  # Shuffle only for training
+        shuffle=(mode in ("train", "train_and_validate")),  # Shuffle only for training
         drop_last=True,  # For stability, drop the last batch if it's < batch size
         num_workers=DATALOADER_NUM_WORKERS,
     )
