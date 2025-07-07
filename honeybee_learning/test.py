@@ -5,8 +5,6 @@ Applied only to the final model to evaluate its performance.
 
 from __future__ import annotations
 
-from typing import NamedTuple
-
 import numpy as np
 import torch
 from torch import nn
@@ -15,7 +13,7 @@ from torch.utils.data import DataLoader
 from .config import DEVICE
 from .dataset import HoneybeeSample
 
-__all__ = ["evaluate_on_linear_predictors"]
+__all__ = ["train_and_test_linear_predictors"]
 
 
 # Hyperparameters for training linear predictors
@@ -23,45 +21,14 @@ LINEAR_PREDICTORS_TRAIN_EPOCHS = 10  # Number of epochs for which to train predi
 LINEAR_PREDICTORS_LEARNING_RATE = 1e-3  # Learning rate to use for predictors
 
 
-class LinearPredictorsEvaluationResults(NamedTuple):
-    """Results of the linear predictors evaluation.
-
-    Attributes:
-        id_train_loss_last_epoch: Average training loss for the bee ID classification
-            task in the last epoch.
-        id_test_loss: Average test loss for the bee ID classification task.
-        id_test_accuracy: Average test accuracy for the bee ID classification task.
-        class_train_loss_last_epoch: Average training loss for the bee class
-            classification task in the last epoch.
-        class_test_loss: Average test loss for the bee class classification task.
-        class_test_accuracy: Average test accuracy for the bee class classification
-            task.
-        angle_train_loss_last_epoch: Average training loss for the bee orientation
-            regression task in the last epoch.
-        angle_test_loss: Average test loss for the bee orientation regression task.
-        angle_test_mae: Average test mean absolute error for the bee orientation
-            regression task; using MAE instead of MSE for better interpretability.
-    """
-
-    id_train_loss_last_epoch: float
-    id_test_loss: float
-    id_test_accuracy: float
-    class_train_loss_last_epoch: float
-    class_test_loss: float
-    class_test_accuracy: float
-    angle_train_loss_last_epoch: float
-    angle_test_loss: float
-    angle_test_mae: float
-
-
-def evaluate_on_linear_predictors(
+def train_and_test_linear_predictors(
     model: nn.DataParallel,
     train_dataloader: DataLoader,
     test_dataloader: DataLoader,
     total_number_of_bees: int,
     train_epochs: int,
     learning_rate: float,
-) -> LinearPredictorsEvaluationResults:
+) -> None:
     """With `model` frozen, train three linear predictors on the training dataset
     provided by `train_dataloader`, and test them on the test dataset provided by
     `test_dataloader`.
@@ -87,10 +54,6 @@ def evaluate_on_linear_predictors(
         train_epochs: Number of epochs to train the linear evaluation head on the
             training dataset for.
         learning_rate: Learning rate for the linear evaluation head optimizer.
-
-    Returns:
-        `LinearPredictorsEvaluationResults` object containing the results of this
-        evaluation.
     """
     assert torch.is_grad_enabled()  # We need gradients for training
     assert not model.training
@@ -266,15 +229,3 @@ def evaluate_on_linear_predictors(
     # Unfreeze the encoder
     for param in model.parameters():
         param.requires_grad = True
-
-    return LinearPredictorsEvaluationResults(
-        id_train_loss_last_epoch=avg_training_loss_epoch_id,
-        id_test_loss=avg_test_loss_id,
-        id_test_accuracy=avg_test_accuracy_id,
-        class_train_loss_last_epoch=avg_training_loss_epoch_class,
-        class_test_loss=avg_test_loss_class,
-        class_test_accuracy=avg_test_accuracy_class,
-        angle_train_loss_last_epoch=avg_training_loss_epoch_angle,
-        angle_test_loss=avg_test_loss_angle,
-        angle_test_mae=avg_test_mae_angle,
-    )
