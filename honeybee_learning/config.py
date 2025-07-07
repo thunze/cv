@@ -10,6 +10,7 @@ __all__ = [
     "FRAMES_PATH",
     "METADATA_PATH",
     "PREPROCESSING_LOG_PATH",
+    "REPRESENTATIONS_PATH",
     "TRAJECTORIES_PATH",
     "VIDEOS_PATH",
     "TOTAL_NUMBER_OF_BEES",
@@ -32,6 +33,7 @@ CROPS_PATH = Path("/scratch/cv-course2025/group7/crops128/crops.npy")
 FRAMES_PATH = Path("/scratch/cv-course2025/group7/frames")
 METADATA_PATH = Path("/scratch/cv-course2025/group7/crops128/metadata224.npy")
 PREPROCESSING_LOG_PATH = Path("/scratch/cv-course2025/group7/processing128.log")
+REPRESENTATIONS_PATH = Path("/scratch/cv-course2025/group7/representations")
 TRAJECTORIES_PATH = Path("/scratch/cv-course2025/group7/trajectories")
 VIDEOS_PATH = Path("/scratch/cv-course2025/group7/videos")
 
