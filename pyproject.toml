@@ -16,6 +16,7 @@ dependencies = [
 
 [project.scripts]
 honeybee-learning = "honeybee_learning.__main__:main"
+preprocessing = "honeybee_learning.preprocessing:main"
 
 [dependency-groups]
 dev = [
