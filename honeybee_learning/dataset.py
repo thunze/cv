@@ -249,7 +249,7 @@ def split_pairs(metadata_array):
 
     # Compute pairs by checking frame difference between temporally adjacent images
     pairs = []
-    for (rec_no, bee_no), frames in index.items():
+    for _, frames in index.items():
         # If the bee has only one frame available, skip because we want pairs
         if len(frames) == 1:
             continue
