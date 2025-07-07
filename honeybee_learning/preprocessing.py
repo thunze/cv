@@ -18,6 +18,8 @@ import traceback
 import cv2
 import numpy as np
 
+from .config import CROPS_PATH, METADATA_PATH
+
 __all__ = ["main"]
 
 
@@ -166,9 +168,7 @@ def crop_bee(img, y, x, crop_size=256):
     return crop
 
 
-def extract_save_crops(
-    bee_detections_by_frame, frames_path, crops_path, bee_number=None
-):
+def extract_save_crops(bee_detections_by_frame, frames_path, bee_number=None):
     """Given a dictionary of bee detections, go through all frames and crop all bees
     for that frame.
 
@@ -177,20 +177,14 @@ def extract_save_crops(
     Args:
         bee_detections_by_frame: Dictionary of bee detections.
         frames_path: Path to folder containing the frames.
-        crops_path: Path to save the cropped images to.
         bee_number: Optional, to extract crops for only one bee. For testing purposes.
     """
-    # Make sure that crop dir exists
-    os.makedirs(crops_path, exist_ok=True)
-
     crops = []
     metadata = []
 
     # Loop through all (rec_no, frame_no) pairs and extract all (or the single one)
     # bees for that frame, so frames only have to be opened once each
-    for i, ((rec_no, frame_no), bees) in enumerate(
-        sorted(bee_detections_by_frame.items())
-    ):
+    for (rec_no, frame_no), bees in sorted(bee_detections_by_frame.items()):
         frame_name = f"frame{str(frame_no).rjust(4, '0')}.png"
         frame_path = os.path.join(frames_path, f"rec{rec_no}", frame_name)
         frame_img = cv2.imread(frame_path, cv2.IMREAD_GRAYSCALE)
@@ -247,7 +241,6 @@ def main():
     trajectories_path = "/scratch/cv-course2025/group7/trajectories/"
     vid_path = "/scratch/cv-course2025/group7/videos/"
     frames_path = "/scratch/cv-course2025/group7/frames/"
-    crops_path = "/scratch/cv-course2025/group7/crops128/"
 
     logging.info("Starting trajectory extraction")
     bee_detections_by_frame = extract_trajectory_information(trajectories_path)
@@ -260,11 +253,14 @@ def main():
 
     logging.info("Starting cropping.")
     crops_array, metadata_array = extract_save_crops(
-        bee_detections_by_frame, frames_path, crops_path
+        bee_detections_by_frame, frames_path
     )
 
-    np.save(os.path.join(crops_path, "crops.npy"), crops_array)
-    np.save(os.path.join(crops_path, "metadata224.npy"), metadata_array)
+    # Make sure that `CROPS_PATH` exists
+    os.makedirs(CROPS_PATH, exist_ok=True)
+
+    np.save(CROPS_PATH, crops_array)
+    np.save(METADATA_PATH, metadata_array)
 
     logging.info("Program execution done.")
 
