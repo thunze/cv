@@ -50,13 +50,9 @@ def precalculate_representations(model_filepath: Path) -> None:
 
     # Get data loaders for both `train_and_validate` and `test` modes
     batch_size = REPRESENTATION_PRECALCULATION_BATCH_SIZE
-    train_and_validate_dataloader = get_single_dataloader(
-        mode="train_and_validate", batch_size=batch_size
+    dataloader = get_single_dataloader(batch_size=batch_size
     )
-    test_dataloader = get_single_dataloader(mode="test", batch_size=batch_size)
-    num_representations = (
-        len(train_and_validate_dataloader) + len(test_dataloader)
-    ) * batch_size
+    num_representations = len(dataloader)* batch_size
 
     representations = np.empty(
         (num_representations, model.module.output_dim), dtype=np.float32
@@ -68,8 +64,8 @@ def precalculate_representations(model_filepath: Path) -> None:
     with torch.no_grad():
         # Precalculate representations for the training and validation dataset
         print("\nCalculating representations for the training and validation crops...")
-        for i, batch in enumerate(train_and_validate_dataloader):
-            print(f"\tProcessing batch {i + 1}/{len(train_and_validate_dataloader)}")
+        for i, batch in enumerate(dataloader):
+            print(f"\tProcessing batch {i + 1}/{len(dataloader)}")
             x, _, _, _ = batch
             x = x.to(DEVICE)  # Move data to the target device
             z = model(x)  # Get the representations
@@ -77,7 +73,7 @@ def precalculate_representations(model_filepath: Path) -> None:
             end_index = start_index + batch_size
             representations[start_index:end_index] = z.cpu().numpy()
 
-        test_repr_offset = len(train_and_validate_dataloader) * batch_size
+        """ test_repr_offset = len(train_and_validate_dataloader) * batch_size
 
         # Precalculate representations for the test dataset
         print("\nCalculating representations for the test crops...")
@@ -88,7 +84,7 @@ def precalculate_representations(model_filepath: Path) -> None:
             z = model(x)
             start_index = test_repr_offset + i * batch_size
             end_index = start_index + batch_size
-            representations[start_index:end_index] = z.cpu().numpy()
+            representations[start_index:end_index] = z.cpu().numpy() """
 
     # Save the representations to a file
     representations_filepath = (

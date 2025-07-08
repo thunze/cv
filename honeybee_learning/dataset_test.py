@@ -58,46 +58,14 @@ class HoneybeeDataset(Dataset):
     This dataset provides access to individual honeybee samples, each represented
     by a `HoneybeeSample` named tuple containing the cropped image, bee ID, class,
     and orientation angle.
-
-    Args:
-        mode: The dataset split to load. Can be 'train_and_validate', or 'test'.
-            This determines which predefined subset of the dataset to use.
+        
     """
 
-    def __init__(self, *, mode: Literal["train_and_validate", "test"]):
+    def __init__(self):
         # Load images and metadata from file
         self.images = load(CROPS_PATH)
         self.metadata = load(METADATA_PATH)
-        self.mode = mode
-
-        # Get all pairs that belong to training and validation split
-        self.pairs_train = [
-            p for p in split_pairs(self.metadata) if p["set"] == "train"
-        ]
-        self.pairs_val = [
-            p for p in split_pairs(self.metadata) if p["set"] == "validate"
-        ]
-
-        # Collect all indices that appear in pairs_train and pairs_val
-        all_pair_indices = {
-            idx
-            for p in self.pairs_train + self.pairs_val
-            for idx in (p["first_index"], p["second_index"])
-        }
-
-        # If mode is train and validate, we use all images that appear in the
-        # training and validation splits of the pair dataset
-        if mode == "train_and_validate":
-            self.indices = sorted(all_pair_indices)
-        # Otherwise we use all images that do not appear in the train and val splits
-        else:
-            self.indices = [
-                i for i in range(len(self.images)) if i not in all_pair_indices
-            ]
-
-        # Get images and metadata for those indices
-        self.images = [self.images[i] for i in self.indices]
-        self.metadata = [self.metadata[i] for i in self.indices]
+       
 
     def __len__(self):
         return len(self.metadata)
@@ -134,7 +102,7 @@ class HoneybeeDataset(Dataset):
 
 
 
-def get_single_dataloader(*, mode: Literal["train_and_validate", "test"], batch_size: int
+def get_single_dataloader(*, batch_size: int
 ) -> DataLoader:
     """Get a `DataLoader` using `HoneybeeDataset` under the hood for the honeybee
     dataset.
@@ -146,7 +114,7 @@ def get_single_dataloader(*, mode: Literal["train_and_validate", "test"], batch_
     Returns:
         A `DataLoader` object for the specified dataset split.
     """
-    dataset = HoneybeeDataset(mode=mode)
+    dataset = HoneybeeDataset()
 
     return DataLoader(
         dataset,
@@ -165,10 +133,42 @@ class HoneybeeRepresentationDataset(Dataset):
     and orientation angle.
 
     """
-    def __init__(self):
+    def __init__(self, *, mode: Literal["train_and_validate", "test"]):
         # Load images and metadata from file
         self.representations = load(REPRESENTATIONS_PATH)
         self.metadata = load(METADATA_PATH)
+
+        self.mode = mode
+
+        # Get all pairs that belong to training and validation split
+        self.pairs_train = [
+            p for p in split_pairs(self.metadata) if p["set"] == "train"
+        ]
+        self.pairs_val = [
+            p for p in split_pairs(self.metadata) if p["set"] == "validate"
+        ]
+
+        # Collect all indices that appear in pairs_train and pairs_val
+        all_pair_indices = {
+            idx
+            for p in self.pairs_train + self.pairs_val
+            for idx in (p["first_index"], p["second_index"])
+        }
+
+        # If mode is train and validate, we use all representations that appear in the
+        # training and validation splits of the pair dataset
+        if mode == "train_and_validate":
+            self.indices = sorted(all_pair_indices)
+        # Otherwise we use all representations that do not appear in the train and val splits
+        else:
+            self.indices = [
+                i for i in range(len(self.representations)) if i not in all_pair_indices
+            ]
+
+        # Get representations and metadata for those indices
+        self.representations = [self.representations[i] for i in self.indices]
+        self.metadata = [self.metadata[i] for i in self.indices]
+        
         
     def __len__(self):
         return len(self.metadata)
@@ -177,7 +177,7 @@ class HoneybeeRepresentationDataset(Dataset):
         """Get a HoneybeeRepresentationSample from the dataset by index."""
         representation = self.representations[index]
         metadata = self.metadata[index]
-        
+
         # Get metadata
         rec_no = int(metadata[0])
         bee_no = int(metadata[2])
@@ -199,11 +199,12 @@ class HoneybeeRepresentationDataset(Dataset):
     
 
 def get_representation_dataloader(
-    *, batch_size: int
+    *,  mode: Literal["train_and_validate", "test"], batch_size: int
 ) -> DataLoader:
     """Get a DataLoader for all representations without splits or shuffling.
 
     Args:
+        mode: The dataset split to load. Can be 'train_and_validate', or 'test'.
         batch_size: The batch size for the `DataLoader`.
 
     Returns:
@@ -214,7 +215,7 @@ def get_representation_dataloader(
     return DataLoader(
         dataset,
         batch_size=batch_size,
-        shuffle=False,  
+        shuffle=(mode != "test"),  # Shuffle only if not testing
         drop_last=False,  
         num_workers=DATALOADER_NUM_WORKERS,
     )
