@@ -12,7 +12,7 @@ from .config import CROPS_PATH, DATALOADER_NUM_WORKERS, METADATA_PATH
 from .dataset_split import split_pairs
 
 __all__ = [
-    "HoneybeeSample",
+    "HoneybeeRepresentationSample",
     "HoneybeeDataset",
     "get_test_dataloader",
 ]
@@ -30,6 +30,24 @@ class HoneybeeSample(NamedTuple):
     """
 
     x: torch.Tensor
+    id_: int
+    class_: int
+    angle: int
+
+
+class HoneybeeRepresentationSample(NamedTuple):
+    """A vector representation of a sample from the honeybee dataset, plus its
+    original metadata.
+
+    Attributes:
+        z: Vector representation of the cropped image of the honeybee; floating-point
+            tensor of shape (representation_dim,).
+        id_: Bee ID, a unique identifier for the honeybee in the dataset.
+        class_: Bee class, either 0 (not within a comb cell) or 1 (within a combcell).
+        angle: Bee orientation angle in degrees (0-360).
+    """
+
+    z: torch.Tensor
     id_: int
     class_: int
     angle: int
@@ -85,7 +103,7 @@ class HoneybeeDataset(Dataset):
     def __len__(self):
         return len(self.metadata)
 
-    def __getitem__(self, index: int) -> HoneybeeSample:
+    def __getitem__(self, index: int) -> HoneybeeRepresentationSample:
         """Get a `HoneybeeSample` from the dataset by index."""
 
         img = self.images[index]
@@ -108,7 +126,7 @@ class HoneybeeDataset(Dataset):
         else:
             bee_id = 361 + bee_no
 
-        return HoneybeeSample(
+        return HoneybeeRepresentationSample(
             x=img,
             id_=bee_id,
             class_=class_id,

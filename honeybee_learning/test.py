@@ -13,7 +13,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 
 from .config import DEVICE, REPRESENTATIONS_PATH
-from .dataset_test import HoneybeeSample
+from .dataset_test import HoneybeeRepresentationSample
 
 __all__ = ["train_and_test_linear_predictors"]
 
@@ -202,7 +202,7 @@ def train_and_test_linear_predictors(
         training_loss_epoch_class = 0
         training_loss_epoch_angle = 0
 
-        batch: HoneybeeSample
+        batch: HoneybeeRepresentationSample
 
         # Train for one epoch
         # One pass through the training dataset
