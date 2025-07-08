@@ -13,7 +13,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 
 from .config import DEVICE, REPRESENTATIONS_PATH
-from .dataset_test import HoneybeeRepresentationSample
+from .dataset_test import HoneybeeRepresentationSample, get_single_dataloader
 
 __all__ = ["train_and_test_linear_predictors"]
 
@@ -54,7 +54,6 @@ def precalculate_representations(model_filepath: Path) -> None:
         mode="train_and_validate", batch_size=batch_size
     )
     test_dataloader = get_single_dataloader(mode="test", batch_size=batch_size)
-
     num_representations = (
         len(train_and_validate_dataloader) + len(test_dataloader)
     ) * batch_size
@@ -65,8 +64,6 @@ def precalculate_representations(model_filepath: Path) -> None:
 
     # Freeze the model
     model.eval()  # Set the model to evaluation mode
-
-    # TODO: Map crop indices to representations
 
     with torch.no_grad():
         # Precalculate representations for the training and validation dataset

@@ -127,7 +127,7 @@ class HoneybeeDataset(Dataset):
             bee_id = 361 + bee_no
 
         return HoneybeeRepresentationSample(
-            x=img,
+            z=img,
             id_=bee_id,
             class_=class_id,
             angle=angle,
@@ -154,5 +154,28 @@ def get_test_dataloader(
         batch_size=batch_size,
         shuffle=(mode == "train_and_validate"),  # Shuffle only for training
         drop_last=True,  # For stability, drop the last batch if it's < batch size
+        num_workers=DATALOADER_NUM_WORKERS,
+    )
+
+
+def get_single_dataloader(*, mode: Literal["train_and_validate", "test"], batch_size: int
+) -> DataLoader:
+    """Get a `DataLoader` using `HoneybeeDataset` under the hood for the honeybee
+    dataset.
+
+    Args:
+        mode: The dataset split to load. Can be 'train_and_validate', or 'test'.
+        batch_size: The batch size for the `DataLoader`.
+
+    Returns:
+        A `DataLoader` object for the specified dataset split.
+    """
+    dataset = HoneybeeDataset(mode=mode)
+
+    return DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=False,   # Do not shuffle for precalculation to maintain order
+        drop_last=False,  
         num_workers=DATALOADER_NUM_WORKERS,
     )
