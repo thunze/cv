@@ -135,8 +135,8 @@ def crop_bee(img, y, x, crop_size=256):
 
     Args:
         img: The input image.
-        y: X-coordinate of the center point.
-        x: Y-coordinate of the center point.
+        y: Y-coordinate of the center point.
+        x: X-coordinate of the center point.
         crop_size (int): Size of the crop (default is 256).
 
     Returns:
