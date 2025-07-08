@@ -13,7 +13,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 
 from .config import DEVICE, REPRESENTATIONS_PATH
-from .dataset import HoneybeeSample
+from .dataset_test import HoneybeeSample
 
 __all__ = ["train_and_test_linear_predictors"]
 

@@ -11,7 +11,7 @@ from lightly.utils.scheduler import CosineWarmupScheduler
 from torch import nn
 
 from .config import DEVICE
-from .dataset import get_dataloader
+from .dataset_train import get_train_dataloader
 from .train import train
 
 __all__ = ["VICReg", "train_vicreg"]
@@ -106,11 +106,9 @@ def train_vicreg(*, log_to_wandb: bool = False) -> None:
         log_to_wandb: Whether to log training progress to Weights & Biases (wandb).
     """
     # Prepare loading training and validation data
-    train_pair_dataloader = get_dataloader(
-        pairs=True, mode="train", batch_size=BATCH_SIZE
-    )
-    validate_pair_dataloader = get_dataloader(
-        pairs=True, mode="validate", batch_size=BATCH_SIZE
+    train_pair_dataloader = get_train_dataloader(mode="train", batch_size=BATCH_SIZE)
+    validate_pair_dataloader = get_train_dataloader(
+        mode="validate", batch_size=BATCH_SIZE
     )
 
     # Prepare model

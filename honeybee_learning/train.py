@@ -17,7 +17,7 @@ from .config import (
     WANDB_ENTITY,
     WANDB_PROJECT,
 )
-from .dataset import HoneybeeImagePair
+from .dataset_train import HoneybeeImagePair
 from .validate import validate_epoch_validation_loss
 
 __all__ = ["train"]

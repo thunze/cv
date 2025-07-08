@@ -11,7 +11,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 
 from .config import DEVICE
-from .dataset import HoneybeeImagePair
+from .dataset_train import HoneybeeImagePair
 
 __all__ = ["validate_epoch_validation_loss"]
 
