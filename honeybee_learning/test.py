@@ -50,9 +50,8 @@ def precalculate_representations(model_filepath: Path) -> None:
 
     # Get data loaders for both `train_and_validate` and `test` modes
     batch_size = REPRESENTATION_PRECALCULATION_BATCH_SIZE
-    dataloader = get_single_dataloader(batch_size=batch_size
-    )
-    num_representations = len(dataloader)* batch_size
+    dataloader = get_single_dataloader(batch_size=batch_size)
+    num_representations = len(dataloader) * batch_size
 
     representations = np.empty(
         (num_representations, model.module.output_dim), dtype=np.float32

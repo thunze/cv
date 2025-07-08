@@ -8,14 +8,21 @@ import torch
 from numpy import load
 from torch.utils.data import DataLoader, Dataset
 
-from .config import CROPS_PATH, DATALOADER_NUM_WORKERS, METADATA_PATH, REPRESENTATIONS_PATH
+from .config import (
+    CROPS_PATH,
+    DATALOADER_NUM_WORKERS,
+    METADATA_PATH,
+    REPRESENTATIONS_PATH,
+)
 from .dataset_split import split_pairs
 
 __all__ = [
     "HoneybeeRepresentationSample",
     "HoneybeeDataset",
-    "get_test_dataloader",
+    "get_single_dataloader",
+    "get_representation_dataloader",
 ]
+
 
 class HoneybeeSample(NamedTuple):
     """A sample from the honeybee dataset.
@@ -58,14 +65,13 @@ class HoneybeeDataset(Dataset):
     This dataset provides access to individual honeybee samples, each represented
     by a `HoneybeeSample` named tuple containing the cropped image, bee ID, class,
     and orientation angle.
-        
+
     """
 
     def __init__(self):
         # Load images and metadata from file
         self.images = load(CROPS_PATH)
         self.metadata = load(METADATA_PATH)
-       
 
     def __len__(self):
         return len(self.metadata)
@@ -101,9 +107,7 @@ class HoneybeeDataset(Dataset):
         )
 
 
-
-def get_single_dataloader(*, batch_size: int
-) -> DataLoader:
+def get_single_dataloader(*, batch_size: int) -> DataLoader:
     """Get a `DataLoader` using `HoneybeeDataset` under the hood for the honeybee
     dataset.
 
@@ -119,8 +123,8 @@ def get_single_dataloader(*, batch_size: int
     return DataLoader(
         dataset,
         batch_size=batch_size,
-        shuffle=False,   # Do not shuffle for precalculation to maintain order
-        drop_last=False,  
+        shuffle=False,  # Do not shuffle for precalculation to maintain order
+        drop_last=False,
         num_workers=DATALOADER_NUM_WORKERS,
     )
 
@@ -133,6 +137,7 @@ class HoneybeeRepresentationDataset(Dataset):
     and orientation angle.
 
     """
+
     def __init__(self, *, mode: Literal["train_and_validate", "test"]):
         # Load images and metadata from file
         self.representations = load(REPRESENTATIONS_PATH)
@@ -168,8 +173,7 @@ class HoneybeeRepresentationDataset(Dataset):
         # Get representations and metadata for those indices
         self.representations = [self.representations[i] for i in self.indices]
         self.metadata = [self.metadata[i] for i in self.indices]
-        
-        
+
     def __len__(self):
         return len(self.metadata)
 
@@ -183,23 +187,23 @@ class HoneybeeRepresentationDataset(Dataset):
         bee_no = int(metadata[2])
         class_id = int(metadata[3])
         angle = int(metadata[4])
-        
+
         # Adjust bee number to be a continuous number instead of per recording
         if rec_no == 1:
             bee_id = bee_no
         else:
             bee_id = 361 + bee_no
-        
+
         return HoneybeeRepresentationSample(
             z=representation,
             id_=bee_id,
             class_=class_id,
             angle=angle,
         )
-    
+
 
 def get_representation_dataloader(
-    *,  mode: Literal["train_and_validate", "test"], batch_size: int
+    *, mode: Literal["train_and_validate", "test"], batch_size: int
 ) -> DataLoader:
     """Get a DataLoader for all representations without splits or shuffling.
 
@@ -216,6 +220,6 @@ def get_representation_dataloader(
         dataset,
         batch_size=batch_size,
         shuffle=(mode != "test"),  # Shuffle only if not testing
-        drop_last=False,  
+        drop_last=False,
         num_workers=DATALOADER_NUM_WORKERS,
     )
