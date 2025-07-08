@@ -17,7 +17,6 @@ __all__ = [
     "get_test_dataloader",
 ]
 
-
 class HoneybeeSample(NamedTuple):
     """A sample from the honeybee dataset.
 
@@ -164,15 +163,13 @@ class HoneybeeRepresentationDataset(Dataset):
     This dataset provides access to individual honeybee representation samples, each represented
     by a `HoneybeeRepresentationSample` named tuple containing the representation vector, bee ID, class,
     and orientation angle.
-    
-    """
 
+    """
     def __init__(self):
         # Load images and metadata from file
         self.representations = load(REPRESENTATIONS_PATH)
         self.metadata = load(METADATA_PATH)
         
-
     def __len__(self):
         return len(self.metadata)
 
@@ -201,7 +198,7 @@ class HoneybeeRepresentationDataset(Dataset):
         )
     
 
-def get_test_dataloader(
+def get_representation_dataloader(
     *, batch_size: int
 ) -> DataLoader:
     """Get a DataLoader for all representations without splits or shuffling.
