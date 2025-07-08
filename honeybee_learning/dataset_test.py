@@ -8,7 +8,7 @@ import torch
 from numpy import load
 from torch.utils.data import DataLoader, Dataset
 
-from .config import CROPS_PATH, DATALOADER_NUM_WORKERS, METADATA_PATH
+from .config import CROPS_PATH, DATALOADER_NUM_WORKERS, METADATA_PATH, REPRESENTATIONS_PATH
 from .dataset_split import split_pairs
 
 __all__ = [
@@ -103,7 +103,7 @@ class HoneybeeDataset(Dataset):
     def __len__(self):
         return len(self.metadata)
 
-    def __getitem__(self, index: int) -> HoneybeeRepresentationSample:
+    def __getitem__(self, index: int) -> HoneybeeSample:
         """Get a `HoneybeeSample` from the dataset by index."""
 
         img = self.images[index]
@@ -126,36 +126,13 @@ class HoneybeeDataset(Dataset):
         else:
             bee_id = 361 + bee_no
 
-        return HoneybeeRepresentationSample(
-            z=img,
+        return HoneybeeSample(
+            x=img,
             id_=bee_id,
             class_=class_id,
             angle=angle,
         )
 
-
-def get_test_dataloader(
-    *, mode: Literal["train_and_validate", "test"], batch_size: int
-) -> DataLoader:
-    """Get a `DataLoader` using `HoneybeeDataset` under the hood for the honeybee
-    dataset.
-
-    Args:
-        mode: The dataset split to load. Can be 'train_and_validate', or 'test'.
-        batch_size: The batch size for the `DataLoader`.
-
-    Returns:
-        A `DataLoader` object for the specified dataset split.
-    """
-    dataset = HoneybeeDataset(mode=mode)
-
-    return DataLoader(
-        dataset,
-        batch_size=batch_size,
-        shuffle=(mode == "train_and_validate"),  # Shuffle only for training
-        drop_last=True,  # For stability, drop the last batch if it's < batch size
-        num_workers=DATALOADER_NUM_WORKERS,
-    )
 
 
 def get_single_dataloader(*, mode: Literal["train_and_validate", "test"], batch_size: int
@@ -176,6 +153,71 @@ def get_single_dataloader(*, mode: Literal["train_and_validate", "test"], batch_
         dataset,
         batch_size=batch_size,
         shuffle=False,   # Do not shuffle for precalculation to maintain order
+        drop_last=False,  
+        num_workers=DATALOADER_NUM_WORKERS,
+    )
+
+
+class HoneybeeRepresentationDataset(Dataset):
+    """PyTorch `Dataset` implementation for the honeybee dataset.
+
+    This dataset provides access to individual honeybee representation samples, each represented
+    by a `HoneybeeRepresentationSample` named tuple containing the representation vector, bee ID, class,
+    and orientation angle.
+    
+    """
+
+    def __init__(self):
+        # Load images and metadata from file
+        self.representations = load(REPRESENTATIONS_PATH)
+        self.metadata = load(METADATA_PATH)
+        
+
+    def __len__(self):
+        return len(self.metadata)
+
+    def __getitem__(self, index: int) -> HoneybeeRepresentationSample:
+        """Get a HoneybeeRepresentationSample from the dataset by index."""
+        representation = self.representations[index]
+        metadata = self.metadata[index]
+        
+        # Get metadata
+        rec_no = int(metadata[0])
+        bee_no = int(metadata[2])
+        class_id = int(metadata[3])
+        angle = int(metadata[4])
+        
+        # Adjust bee number to be a continuous number instead of per recording
+        if rec_no == 1:
+            bee_id = bee_no
+        else:
+            bee_id = 361 + bee_no
+        
+        return HoneybeeRepresentationSample(
+            z=representation,
+            id_=bee_id,
+            class_=class_id,
+            angle=angle,
+        )
+    
+
+def get_test_dataloader(
+    *, batch_size: int
+) -> DataLoader:
+    """Get a DataLoader for all representations without splits or shuffling.
+
+    Args:
+        batch_size: The batch size for the `DataLoader`.
+
+    Returns:
+        A `DataLoader` object for the specified dataset.
+    """
+    dataset = HoneybeeRepresentationDataset()
+
+    return DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=False,  
         drop_last=False,  
         num_workers=DATALOADER_NUM_WORKERS,
     )
