@@ -51,39 +51,25 @@ def precalculate_representations(model_filepath: Path) -> None:
     # Get data loaders for both `train_and_validate` and `test` modes
     batch_size = REPRESENTATION_PRECALCULATION_BATCH_SIZE
     dataloader = get_single_dataloader(batch_size=batch_size)
-    num_representations = len(dataloader) * batch_size
+    num_representations = len(dataloader.dataset)
 
     representations = np.empty(
         (num_representations, model.module.output_dim), dtype=np.float32
     )
 
-    # Freeze the model
-    model.eval()  # Set the model to evaluation mode
+    # Set the model to evaluation mode
+    model.eval()
 
     with torch.no_grad():
-        # Precalculate representations for the training and validation dataset
-        print("\nCalculating representations for the training and validation crops...")
+        print("\nCalculating representations...")
         for i, batch in enumerate(dataloader):
             print(f"\tProcessing batch {i + 1}/{len(dataloader)}")
             x, _, _, _ = batch
             x = x.to(DEVICE)  # Move data to the target device
             z = model(x)  # Get the representations
             start_index = i * batch_size
-            end_index = start_index + batch_size
+            end_index = start_index + x.shape[0]  # Actual batch size may vary
             representations[start_index:end_index] = z.cpu().numpy()
-
-        """ test_repr_offset = len(train_and_validate_dataloader) * batch_size
-
-        # Precalculate representations for the test dataset
-        print("\nCalculating representations for the test crops...")
-        for i, batch in enumerate(test_dataloader):
-            print(f"\tProcessing batch {i + 1}/{len(test_dataloader)}")
-            x, _, _, _ = batch
-            x = x.to(DEVICE)
-            z = model(x)
-            start_index = test_repr_offset + i * batch_size
-            end_index = start_index + batch_size
-            representations[start_index:end_index] = z.cpu().numpy() """
 
     # Save the representations to a file
     representations_filepath = (
