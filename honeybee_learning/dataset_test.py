@@ -65,7 +65,6 @@ class HoneybeeDataset(Dataset):
     This dataset provides access to individual honeybee samples, each represented
     by a `HoneybeeSample` named tuple containing the cropped image, bee ID, class,
     and orientation angle.
-
     """
 
     def __init__(self):
@@ -78,7 +77,6 @@ class HoneybeeDataset(Dataset):
 
     def __getitem__(self, index: int) -> HoneybeeSample:
         """Get a `HoneybeeSample` from the dataset by index."""
-
         img = self.images[index]
         metadata = self.metadata[index]
 
@@ -112,7 +110,6 @@ def get_single_dataloader(*, batch_size: int) -> DataLoader:
     dataset.
 
     Args:
-        mode: The dataset split to load. Can be 'train_and_validate', or 'test'.
         batch_size: The batch size for the `DataLoader`.
 
     Returns:
@@ -132,14 +129,20 @@ def get_single_dataloader(*, batch_size: int) -> DataLoader:
 class HoneybeeRepresentationDataset(Dataset):
     """PyTorch `Dataset` implementation for the honeybee dataset.
 
-    This dataset provides access to individual honeybee representation samples, each represented
-    by a `HoneybeeRepresentationSample` named tuple containing the representation vector, bee ID, class,
-    and orientation angle.
+    This dataset provides access to individual honeybee representation samples, each
+    represented by a `HoneybeeRepresentationSample` named tuple containing the
+    representation vector, bee ID, class, and orientation angle.
 
+    Args:
+        mode: The dataset split to load. Can be 'train_and_validate', or 'test'.
+            In 'train_and_validate' mode, the dataset contains all representations
+            that appear in the training and validation splits of the pair dataset.
+            In 'test' mode, the dataset contains all representations that do not
+            appear in the training and validation splits of the pair dataset.
     """
 
     def __init__(self, *, mode: Literal["train_and_validate", "test"]):
-        # Load images and metadata from file
+        # Load representation and metadata from file
         self.representations = load(REPRESENTATIONS_PATH)
         self.metadata = load(METADATA_PATH)
 
@@ -164,7 +167,8 @@ class HoneybeeRepresentationDataset(Dataset):
         # training and validation splits of the pair dataset
         if mode == "train_and_validate":
             self.indices = sorted(all_pair_indices)
-        # Otherwise we use all representations that do not appear in the train and val splits
+        # Otherwise we use all representations that do not appear in the train and
+        # validation splits
         else:
             self.indices = [
                 i for i in range(len(self.representations)) if i not in all_pair_indices
