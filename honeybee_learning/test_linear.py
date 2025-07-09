@@ -1,82 +1,24 @@
-"""Model testing functions.
-
-Applied only to the final model to evaluate its performance.
+"""Functions for testing an unsupervised representation learning model on the
+honeybee dataset by training and testing a set of linear predictors on top of the
+model's frozen encoder.
 """
 
 from __future__ import annotations
-
-from pathlib import Path
 
 import numpy as np
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
-from .config import DEVICE, REPRESENTATIONS_PATH
-from .dataset_test import HoneybeeRepresentationSample, get_single_dataloader
+from .config import DEVICE
+from .dataset_test import HoneybeeRepresentationSample
 
 __all__ = ["train_and_test_linear_predictors"]
 
 
-# Batch size for precalculating representations of cropped honeybee images.
-REPRESENTATION_PRECALCULATION_BATCH_SIZE = 64
-
 # Hyperparameters for training linear predictors
 LINEAR_PREDICTORS_TRAIN_EPOCHS = 10  # Number of epochs for which to train predictors
 LINEAR_PREDICTORS_LEARNING_RATE = 1e-3  # Learning rate to use for predictors
-
-
-def precalculate_representations(model_filepath: Path) -> None:
-    """Using a frozen self-supervised representation learning model, precalculate
-    and save representations of all cropped honeybee images in the honeybee dataset.
-
-    This is done to speed up the evaluation of the self-supervised representation
-    learning model.
-
-    The representations are saved in a file named just like the model checkpoint,
-    but ending with `_representations.npy` instead of `.pth`. The file will be saved
-    in the configured `REPRESENTATIONS_PATH` directory.
-
-    Args:
-        model_filepath: Path to the self-supervised representation learning model
-            checkpoint file.
-    """
-    # Make sure the representations directory exists
-    REPRESENTATIONS_PATH.mkdir(parents=True, exist_ok=True)
-
-    # Load the model checkpoint
-    print(f"Loading model from {model_filepath!r}...")
-    model = torch.load(model_filepath, map_location=DEVICE)
-
-    # Get data loaders for both `train_and_validate` and `test` modes
-    batch_size = REPRESENTATION_PRECALCULATION_BATCH_SIZE
-    dataloader = get_single_dataloader(batch_size=batch_size)
-    num_representations = len(dataloader.dataset)
-
-    representations = np.empty(
-        (num_representations, model.module.output_dim), dtype=np.float32
-    )
-
-    # Set the model to evaluation mode
-    model.eval()
-
-    with torch.no_grad():
-        print("\nCalculating representations...")
-        for i, batch in enumerate(dataloader):
-            print(f"\tProcessing batch {i + 1}/{len(dataloader)}")
-            x, _, _, _ = batch
-            x = x.to(DEVICE)  # Move data to the target device
-            z = model(x)  # Get the representations
-            start_index = i * batch_size
-            end_index = start_index + x.shape[0]  # Actual batch size may vary
-            representations[start_index:end_index] = z.cpu().numpy()
-
-    # Save the representations to a file
-    representations_filepath = (
-        REPRESENTATIONS_PATH / f"{model_filepath.stem}_representations.npy"
-    )
-    print(f"\nSaving representations to {representations_filepath!r}...")
-    np.save(representations_filepath, representations)
 
 
 def train_and_test_linear_predictors(

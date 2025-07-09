@@ -1,3 +1,10 @@
+"""Functions for evaluating an unsupervised representation learning model on the
+honeybee dataset by visualizing the learned representations with the help of
+dimensionality reduction techniques and the labels provided by the dataset.
+"""
+
+from __future__ import annotations
+
 from pathlib import Path
 
 import matplotlib.pyplot as plt
