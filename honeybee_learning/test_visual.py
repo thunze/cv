@@ -12,9 +12,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
-from honeybee_learning.config import DATASET_CREATE_SHUFFLE_SEED, FIGURES_FOLDER, VISUALIZATION_NUM_SAMPLES
+from honeybee_learning.config import (
+    DATASET_CREATE_SHUFFLE_SEED,
+    FIGURES_PATH,
+    VISUALIZATION_NUM_SAMPLES,
+)
 from honeybee_learning.dataset_test import get_representation_dataloader
-
 
 
 # TODO: Add docstrings, make plots better
@@ -53,11 +56,15 @@ def evaluate(representations_filepath: Path):
     :param representations_filepath: Path to the  .npy file containing the representations.
     """
     # Create dataloader
-    dataloader = get_representation_dataloader(representations_filepath, mode="test", batch_size=256)
+    dataloader = get_representation_dataloader(
+        representations_filepath, mode="test", batch_size=256
+    )
     # Load representation and metadata from the dataloader
     representations, labels = extract_representations_and_labels(dataloader)
     # Create and save plots
-    evaluate_samples(representations, labels, representations_filepath.stem, plot_figs=True)
+    evaluate_samples(
+        representations, labels, representations_filepath.stem, plot_figs=True
+    )
 
 
 def evaluate_samples(representations, labels, data_title, plot_figs=False):
@@ -116,7 +123,7 @@ def evaluate_samples(representations, labels, data_title, plot_figs=False):
         )
 
     # Create a folder to save all the figures in
-    plot_folder = FIGURES_FOLDER / data_title
+    plot_folder = FIGURES_PATH / data_title
     os.makedirs(plot_folder, exist_ok=True)
 
     # Save all created plots, optionally display them
@@ -180,7 +187,9 @@ def extract_representations_and_labels(dataloader):
     representations = []
     labels = []
 
-    for i, batch in enumerate(dataloader):  # batch is a batch of HoneybeeRepresentationSample
+    for i, batch in enumerate(
+        dataloader
+    ):  # batch is a batch of HoneybeeRepresentationSample
         # batch.z shape: (batch_size, feature_dim)
         representations.append(batch.z.cpu().numpy())
 

@@ -8,12 +8,7 @@ import torch
 from numpy import load
 from torch.utils.data import DataLoader, Dataset
 
-from .config import (
-    CROPS_PATH,
-    DATALOADER_NUM_WORKERS,
-    METADATA_PATH,
-    REPRESENTATIONS_PATH,
-)
+from .config import CROPS_PATH, DATALOADER_NUM_WORKERS, METADATA_PATH
 from .dataset_split import split_pairs
 
 __all__ = [
@@ -141,7 +136,9 @@ class HoneybeeRepresentationDataset(Dataset):
             appear in the training and validation splits of the pair dataset.
     """
 
-    def __init__(self,path_to_representations , *, mode: Literal["train_and_validate", "test"]):
+    def __init__(
+        self, path_to_representations, *, mode: Literal["train_and_validate", "test"]
+    ):
         # Load representation and metadata from file
         self.representations = load(path_to_representations)
         self.metadata = load(METADATA_PATH)
@@ -206,8 +203,11 @@ class HoneybeeRepresentationDataset(Dataset):
         )
 
 
-def get_representation_dataloader(path_to_representations,
-    *, mode: Literal["train_and_validate", "test"], batch_size: int
+def get_representation_dataloader(
+    path_to_representations,
+    *,
+    mode: Literal["train_and_validate", "test"],
+    batch_size: int,
 ) -> DataLoader:
     """Get a DataLoader for all representations without splits or shuffling.
 

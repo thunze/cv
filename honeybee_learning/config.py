@@ -5,15 +5,16 @@ from __future__ import annotations
 from pathlib import Path
 
 __all__ = [
+    "BASE_PATH",
     "CHECKPOINTS_PATH",
     "CROPS_PATH",
+    "FIGURES_PATH",
     "FRAMES_PATH",
     "METADATA_PATH",
     "PREPROCESSING_LOG_PATH",
     "REPRESENTATIONS_PATH",
     "TRAJECTORIES_PATH",
     "VIDEOS_PATH",
-    "FIGURES_FOLDER",
     "TOTAL_NUMBER_OF_BEES",
     "MAX_FRAME_DIFFERENCE",
     "DATASET_CREATE_SHUFFLE",
@@ -30,15 +31,16 @@ __all__ = [
 
 
 # Paths
-CHECKPOINTS_PATH = Path("/scratch/cv-course2025/group7/checkpoints")
-CROPS_PATH = Path("/scratch/cv-course2025/group7/crops128/crops.npy")
-FRAMES_PATH = Path("/scratch/cv-course2025/group7/frames")
-METADATA_PATH = Path("/scratch/cv-course2025/group7/crops128/metadata224.npy")
-PREPROCESSING_LOG_PATH = Path("/scratch/cv-course2025/group7/processing128.log")
-REPRESENTATIONS_PATH = Path("/scratch/cv-course2025/group7/representations")
-TRAJECTORIES_PATH = Path("/scratch/cv-course2025/group7/trajectories")
-VIDEOS_PATH = Path("/scratch/cv-course2025/group7/videos")
-FIGURES_FOLDER = Path("/scratch/cv-course2025/group7/figures")
+BASE_PATH = Path("/scratch/cv-course2025/group7")
+CHECKPOINTS_PATH = BASE_PATH / "checkpoints"
+CROPS_PATH = BASE_PATH / "crops128" / "crops.npy"
+FIGURES_PATH = BASE_PATH / "figures"
+FRAMES_PATH = BASE_PATH / "frames"
+METADATA_PATH = BASE_PATH / "crops128" / "metadata224.npy"
+PREPROCESSING_LOG_PATH = BASE_PATH / "processing128.log"
+REPRESENTATIONS_PATH = BASE_PATH / "representations"
+TRAJECTORIES_PATH = BASE_PATH / "trajectories"
+VIDEOS_PATH = BASE_PATH / "videos"
 
 # Data
 TOTAL_NUMBER_OF_BEES = 876  # Total number of unique bees in the honeybee dataset
