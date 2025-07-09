@@ -1,4 +1,4 @@
-"""Script for running deep learning experiments on the honeybee dataset."""
+"""CLI entrypoints for the project."""
 
 from __future__ import annotations
 
@@ -6,11 +6,11 @@ from argparse import ArgumentParser
 
 from honeybee_learning import simclr, vicreg
 
-__all__ = ["main"]
+__all__ = ["train"]
 
 
-def main():
-    """Main function."""
+def train():
+    """CLI for running deep learning experiments on the honeybee dataset."""
     parser = ArgumentParser(
         description="Run deep learning experiments on the honeybee dataset."
     )
@@ -31,7 +31,3 @@ def main():
         simclr.train_simclr(log_to_wandb=args.wandb)
     else:
         vicreg.train_vicreg(log_to_wandb=args.wandb)
-
-
-if __name__ == "__main__":
-    main()
