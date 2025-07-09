@@ -10,9 +10,12 @@ __all__ = ["train"]
 
 
 def train():
-    """CLI for running deep learning experiments on the honeybee dataset."""
+    """CLI for training a model on the honeybee dataset."""
     parser = ArgumentParser(
-        description="Run deep learning experiments on the honeybee dataset."
+        description=(
+            "Train a self-supervised representation learning model on the honeybee "
+            "dataset."
+        )
     )
     parser.add_argument(
         "--model",
