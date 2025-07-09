@@ -85,5 +85,5 @@ def precalculate_representations(
     representations_filepath = (
         REPRESENTATIONS_PATH / f"{checkpoint_path.stem}_representations.npy"
     )
-    print(f"\nSaving representations to {representations_filepath!r}...")
+    print(f"\nSaving representations to {representations_filepath}...")
     np.save(representations_filepath, representations)
