@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from argparse import ArgumentParser
+from pathlib import Path
 
-from honeybee_learning import simclr, vicreg
+from honeybee_learning import simclr, test_precalculate, vicreg
 
 __all__ = ["train"]
 
@@ -34,3 +35,23 @@ def train():
         simclr.train_simclr(log_to_wandb=args.wandb)
     else:
         vicreg.train_vicreg(log_to_wandb=args.wandb)
+
+
+def precalculate_representations():
+    """CLI for precalculating representations of honeybee images in the dataset."""
+    parser = ArgumentParser(
+        description=(
+            "Precalculate and store representations of all honeybee images in the "
+            "honeybee dataset using a checkpoint of a pretrained self-supervised "
+            "representation learning model."
+        )
+    )
+    parser.add_argument(
+        "checkpoint",
+        type=str,
+        help="path to the checkpoint file from which to load the pretrained model",
+    )
+    args = parser.parse_args()
+
+    model_filepath = Path(args.model_filepath)
+    test_precalculate.precalculate_representations(model_filepath)
