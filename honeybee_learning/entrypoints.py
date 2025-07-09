@@ -53,5 +53,5 @@ def precalculate_representations():
     )
     args = parser.parse_args()
 
-    model_filepath = Path(args.model_filepath)
+    model_filepath = Path(args.checkpoint)
     test_precalculate.precalculate_representations(model_filepath)
