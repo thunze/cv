@@ -47,11 +47,18 @@ def precalculate_representations():
         )
     )
     parser.add_argument(
+        "--model",
+        choices=["simclr", "vicreg"],
+        required=True,
+        help="type of the model to use for precalculating representations",
+    )
+    parser.add_argument(
         "checkpoint",
         type=str,
         help="path to the checkpoint file from which to load the pretrained model",
     )
     args = parser.parse_args()
 
-    model_filepath = Path(args.checkpoint)
-    test_precalculate.precalculate_representations(model_filepath)
+    model_type = args.model
+    checkpoint_path = Path(args.checkpoint)
+    test_precalculate.precalculate_representations(model_type, checkpoint_path)
