@@ -53,11 +53,9 @@ def evaluate(representations_filepath: Path):
     :param representations_filepath: Path to the  .npy file containing the representations.
     """
     # Create dataloader
-    dataloader = get_representation_dataloader(representations_filepath, mode="test", batch_size=1)
-
+    dataloader = get_representation_dataloader(representations_filepath, mode="test", batch_size=256)
     # Load representation and metadata from the dataloader
     representations, labels = extract_representations_and_labels(dataloader)
-
     # Create and save plots
     evaluate_samples(representations, labels, representations_filepath.stem, plot_figs=True)
 
@@ -119,7 +117,7 @@ def evaluate_samples(representations, labels, data_title, plot_figs=False):
 
     # Create a folder to save all the figures in
     plot_folder = FIGURES_FOLDER / data_title
-    os.mkdir(plot_folder, parents=True, exist_ok=True)
+    os.makedirs(plot_folder, exist_ok=True)
 
     # Save all created plots, optionally display them
     for fig, plot_name in plots:
@@ -175,17 +173,20 @@ def create_sample(representations, labels, sample_size=5000, random=True):
 def extract_representations_and_labels(dataloader):
     """
     Given a dataloader for the HoneybeeRepresentationDataset, extracts the representations and labels.
-    Assumes batch_size is 1 (no batching).
+    Supports batch sizes > 1.
     :param dataloader: The dataloader.
     :return: A tuple containing the representations, labels.
     """
     representations = []
     labels = []
 
-    # Extract representations and labels, then stack and return them
-    for sample in dataloader:  # type: HoneybeeRepresentationSample
-        representations.append(sample.z.cpu().numpy())
-        labels.append((sample.id_, sample.class_, sample.angle))
+    for i, batch in enumerate(dataloader):  # batch is a batch of HoneybeeRepresentationSample
+        # batch.z shape: (batch_size, feature_dim)
+        representations.append(batch.z.cpu().numpy())
+
+        # batch.id_, batch.class_, batch.angle are sequences of length batch_size
+        batch_labels = list(zip(batch.id_, batch.class_, batch.angle))
+        labels.extend(batch_labels)
 
     representations = np.vstack(representations)
     labels = np.array(labels)
