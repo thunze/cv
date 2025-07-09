@@ -13,6 +13,7 @@ __all__ = [
     "REPRESENTATIONS_PATH",
     "TRAJECTORIES_PATH",
     "VIDEOS_PATH",
+    "FIGURES_FOLDER",
     "TOTAL_NUMBER_OF_BEES",
     "MAX_FRAME_DIFFERENCE",
     "DATASET_CREATE_SHUFFLE",
@@ -22,6 +23,7 @@ __all__ = [
     "DEVICE",
     "DATALOADER_NUM_WORKERS",
     "CHECKPOINT_EVERY_N_EPOCHS",
+    "VISUALIZATION_NUM_SAMPLES",
     "WANDB_ENTITY",
     "WANDB_PROJECT",
 ]
@@ -36,6 +38,7 @@ PREPROCESSING_LOG_PATH = Path("/scratch/cv-course2025/group7/processing128.log")
 REPRESENTATIONS_PATH = Path("/scratch/cv-course2025/group7/representations")
 TRAJECTORIES_PATH = Path("/scratch/cv-course2025/group7/trajectories")
 VIDEOS_PATH = Path("/scratch/cv-course2025/group7/videos")
+FIGURES_FOLDER = Path("/scratch/cv-course2025/group7/figures")
 
 # Data
 TOTAL_NUMBER_OF_BEES = 876  # Total number of unique bees in the honeybee dataset
@@ -49,6 +52,7 @@ VALIDATION_RATIO = 0.15  # Amount of the data to use for validation
 DEVICE = "cuda"  # Device to train and run the model on, typically a GPU
 DATALOADER_NUM_WORKERS = 16  # Number of processes used by `DataLoader` instances
 CHECKPOINT_EVERY_N_EPOCHS = 10  # Save model checkpoint every N epochs
+VISUALIZATION_NUM_SAMPLES = 1000
 
 # Weights & Biases (wandb) configuration
 WANDB_ENTITY = "thunze"  # Team name

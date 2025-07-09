@@ -5,42 +5,57 @@ dimensionality reduction techniques and the labels provided by the dataset.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
+from honeybee_learning.config import DATASET_CREATE_SHUFFLE_SEED, FIGURES_FOLDER, VISUALIZATION_NUM_SAMPLES
+from honeybee_learning.dataset_test import get_representation_dataloader
 
-from honeybee_learning.config import DATASET_CREATE_SHUFFLE_SEED
 
-NUM_SAMPLE = 1000
 
 # TODO: Add docstrings, make plots better
 
 
 def get_pca_projections(representations, n_components=3):
+    """
+    Given a set of representations in the shape (N, D) with N being the number of samples and D being the dimensionality,
+    reduces them to n_components dimensions using PCA.
+    :param representations: The representations to apply PCA on.
+    :param n_components: The dimensionality to reduce to. Default: 3
+    :return: The projections of shape (N, n_components)
+    """
     my_pca = PCA(n_components=n_components)
-
     projections = my_pca.fit_transform(representations)
-
     return projections
 
 
 def get_tsne_projections(representations, n_components=3):
+    """
+    Given a set of representations in the shape (N, D) with N being the number of samples and D being the dimensionality,
+    projects them into n_components dimensions using t-SNE.
+    :param representations: The representations to apply t-SNE on.
+    :param n_components: The dimensionality to project to. Default: 3
+    :return: The projections of shape (N, n_components)
+    """
     my_tsne = TSNE(n_components=n_components)
-
     projections = my_tsne.fit_transform(representations)
-
     return projections
 
 
-def evaluate():
-    # TODO: Add dataloader handling
+def evaluate(representations_filepath: Path):
+    """
+    Using a filepath to precalculated representations, samples them, projects them into 3-dimensional space and then
+    plots the results.
+    :param representations_filepath: Path to the  .npy file containing the representations.
+    """
     # Create dataloader
-    dataloader = None
+    dataloader = get_representation_dataloader(representations_filepath, mode="test", batch_size=1)
 
-    # Load representation and metadata
+    # Load representation and metadata from the dataloader
     representations, labels = extract_representations_and_labels(dataloader)
 
     # Create and save plots
@@ -48,14 +63,24 @@ def evaluate():
 
 
 def evaluate_samples(representations, labels, data_title, plot_figs=False):
+    """
+    Takes two samples from the representations and labels provided. Then calculates the 3-dimensional projections
+    and plots them using matplotlib.pyplot. Figures are saved in the folder specified in config.py
+    :param representations: The learned representations of shape (N, D)
+    :param labels: The labels belonging to the representations with shape (N, 3)
+    :param data_title: Title to use for titling and saving the plots
+    :param plot_figs: Whether to plot the figs immediately.
+    :return:
+    """
+
     # Take a sample, so we have a relatively equal split of different bees for visualizing bee id
     sample_id_representations, sample_id_labels = create_sample(
-        representations, labels, sample_size=NUM_SAMPLE, random=False
+        representations, labels, sample_size=VISUALIZATION_NUM_SAMPLES, random=False
     )
 
     # Take a random sample for visualizing class and angle
     random_sample_representations, random_sample_labels = create_sample(
-        representations, labels, sample_size=NUM_SAMPLE, random=True
+        representations, labels, sample_size=VISUALIZATION_NUM_SAMPLES, random=True
     )
 
     # Calculate projections for both samples
@@ -77,11 +102,13 @@ def evaluate_samples(representations, labels, data_title, plot_figs=False):
 
     # Create plots for the projections
     plots = []
+    # Plots for the honeybee-id projections
     for projection, name in sample_id_projections:
         plots.append(
             (plot_bee_id(projection, sample_id_labels[:, 0]), f"{name}_bee_id")
         )
 
+    # Plots for the randomly sampled projections
     for projection, name in random_sample_projections:
         plots.append(
             (plot_class(projection, random_sample_labels[:, 1]), f"{name}_class")
@@ -90,12 +117,14 @@ def evaluate_samples(representations, labels, data_title, plot_figs=False):
             (plot_angle(projection, random_sample_labels[:, 2]), f"{name}_angle")
         )
 
-    PLOTS_PATH = Path("./")
+    # Create a folder to save all the figures in
+    plot_folder = FIGURES_FOLDER / data_title
+    os.mkdir(plot_folder, parents=True, exist_ok=True)
 
+    # Save all created plots, optionally display them
     for fig, plot_name in plots:
-        title = f"{data_title}_{plot_name}"
-        fig.suptitle(title)
-        plot_filepath = PLOTS_PATH / f"{title}.png"
+        fig.suptitle(f"{data_title}_{plot_name}")
+        plot_filepath = plot_folder / f"{plot_name}.png"
         fig.savefig(plot_filepath)
         if plot_figs:
             plt.show()
@@ -104,12 +133,14 @@ def evaluate_samples(representations, labels, data_title, plot_figs=False):
 
 def create_sample(representations, labels, sample_size=5000, random=True):
     """
+    Creates a subsample of the given dataset with optional balanced sampling.
     If random is true, creates a randomly sampled sample from representations and labels and returns it.
     If it is false, samples them, so we get a relatively even distribution over all bee ids.
-    :param representations:
-    :param labels:
-    :param random:
-    :return:
+
+    :param representations: The representations to draw the sample from.
+    :param labels: The labels to draw the sample from.
+    :param random (bool) : Whether to perform random sampling or draw a sample evenly distributed across all bee IDs.
+    :return: Tuple[np.ndarray, np.ndarray] Tuple containing the sampled representations and labels.
     """
 
     if random:
@@ -120,12 +151,16 @@ def create_sample(representations, labels, sample_size=5000, random=True):
 
     else:
         rng = np.random.default_rng(DATASET_CREATE_SHUFFLE_SEED)
+
         bee_ids = labels[:, 0]
         unique_ids = np.unique(bee_ids)
+
+        # Map bee ids to their corresponding indices
         id_to_indices = {bid: np.where(bee_ids == bid)[0] for bid in unique_ids}
         per_id = max(1, sample_size // len(unique_ids))
         selected_indices = []
 
+        # Randomly sample up to per_id samples for each bee.
         for bid, indices in id_to_indices.items():
             num_to_sample = min(per_id, len(indices))
             chosen = rng.choice(indices, size=num_to_sample, replace=False)
@@ -138,9 +173,16 @@ def create_sample(representations, labels, sample_size=5000, random=True):
 
 
 def extract_representations_and_labels(dataloader):
+    """
+    Given a dataloader for the HoneybeeRepresentationDataset, extracts the representations and labels.
+    Assumes batch_size is 1 (no batching).
+    :param dataloader: The dataloader.
+    :return: A tuple containing the representations, labels.
+    """
     representations = []
     labels = []
 
+    # Extract representations and labels, then stack and return them
     for sample in dataloader:  # type: HoneybeeRepresentationSample
         representations.append(sample.z.cpu().numpy())
         labels.append((sample.id_, sample.class_, sample.angle))
@@ -152,6 +194,12 @@ def extract_representations_and_labels(dataloader):
 
 
 def plot_bee_id(projections, labels):
+    """
+    Creates a scatter plot for the 3-dimensional representations, colored by the bee_id contained in labels.
+    :param projections: An array of shape (N, 3) containing the projected representations.
+    :param labels: The associated labels containing the bee_ids.
+    :return: Returns the figure created.
+    """
     fig = plt.figure(figsize=(15, 15))
     ax = fig.add_subplot(111, projection="3d")
 
@@ -176,6 +224,12 @@ def plot_bee_id(projections, labels):
 
 
 def plot_class(projections, labels):
+    """
+    Creates a scatter plot for the 3-dimensional representations, colored by the class contained in labels.
+    :param projections: An array of shape (N, 3) containing the projected representations.
+    :param labels: The associated labels containing the class.
+    :return: Returns the figure created.
+    """
     fig = plt.figure(figsize=(15, 15))
     ax = fig.add_subplot(111, projection="3d")
 
@@ -213,6 +267,13 @@ def plot_class(projections, labels):
 
 
 def plot_angle(projections, labels):
+    """
+    Creates a scatter plot for the 3-dimensional representations, colored by the angle contained in labels.
+    Visualizes the points in 3-d space using a continuous HSV colormap to represent the angles in degrees.
+    :param projections: An array of shape (N, 3) containing the projected representations.
+    :param labels: The associated labels containing the angle.
+    :return: Returns the figure created.
+    """
     fig = plt.figure(figsize=(15, 15))
     ax = fig.add_subplot(111, projection="3d")
 
