@@ -59,7 +59,7 @@ def evaluate(representations_filepath: Path):
     representations, labels = extract_representations_and_labels(dataloader)
 
     # Create and save plots
-    evaluate_samples(representations, labels, "title ", plot_figs=True)
+    evaluate_samples(representations, labels, representations_filepath.stem, plot_figs=True)
 
 
 def evaluate_samples(representations, labels, data_title, plot_figs=False):
