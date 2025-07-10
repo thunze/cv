@@ -10,17 +10,56 @@ from pathlib import Path
 import numpy as np
 import torch
 from torch import nn
-from torch.utils.data import DataLoader
 
-from .config import DEVICE, METADATA_PATH
-from .dataset_test import HoneybeeRepresentationSample
+from .config import DEVICE, TOTAL_NUMBER_OF_BEES
+from .dataset_test import HoneybeeRepresentationSample, get_representation_dataloader
 
 __all__ = ["train_and_test_linear_predictors"]
 
 
-# Hyperparameters for training linear predictors
-LINEAR_PREDICTORS_TRAIN_EPOCHS = 10  # Number of epochs for which to train predictors
+# Hyperparameters for linear evaluation head training
+LINEAR_PREDICTORS_INPUT_DIM = 128  # Output dimension of both SimCLR and VICReg models
+LINEAR_PREDICTORS_BATCH_SIZE = 64  # Batch size to use for training and testing
+LINEAR_PREDICTORS_EPOCHS = 10  # Number of epochs for which to train predictors
 LINEAR_PREDICTORS_LEARNING_RATE = 1e-3  # Learning rate to use for predictors
+
+
+class LinearEvaluationHead(nn.Module):
+    """Linear evaluation head used to train and test linear predictors on top of a
+    frozen self-supervised representation learning model.
+
+    Args:
+        model_output_dim: Output dimension of the encoder, i.e., the input dimension
+            of the linear evaluation head. This should match the output dimension of
+            the self-supervised representation learning model used to generate the
+            representations of the honeybee images.
+    """
+
+    def __init__(self, model_output_dim: int):
+        super().__init__()
+
+        # Define linear layers for the three tasks
+        self.classifier_id = nn.Linear(
+            model_output_dim, TOTAL_NUMBER_OF_BEES
+        )  # Multi-class
+        self.classifier_class = nn.Linear(model_output_dim, 1)  # Binary (0/1)
+        self.regressor_angle = nn.Linear(model_output_dim, 1)  # Real-valued
+
+    def forward(self, z):
+        """Forward pass through the linear evaluation head.
+
+        Args:
+            z: Representation tensor of shape (batch_size, model_output_dim),
+                where `model_output_dim` is the output dimension of the encoder.
+
+        Returns:
+            Tuple of (bee ID logits, bee class logit, bee angle prediction). Note
+            that each of these tensors may have an additional batch dimension.
+        """
+        id_logits = self.classifier_id(z)
+        class_logit = self.classifier_class(z)
+        angle_pred = self.regressor_angle(z)
+        return id_logits, class_logit, angle_pred
 
 
 def train_and_test_linear_predictors(
@@ -56,50 +95,21 @@ def train_and_test_linear_predictors(
         log_to_wandb: Whether to log training and testing progress to
             Weights & Biases (wandb).
     """
-    assert torch.is_grad_enabled()  # We need gradients for training
-    assert not model.training
-
-    # Freeze the encoder
-    for param in model.parameters():
-        param.requires_grad = False
-
-    class LinearEvaluationHead(nn.Module):
-        """Linear evaluation head placed on top of `model`.
-
-        Args:
-            model_output_dim: Output dimension of the projection head of `model`,
-                i.e., the dimension of the output of the encoder.
-        """
-
-        def __init__(self, model_output_dim: int):
-            super().__init__()
-
-            # Define linear layers for the three tasks
-            self.classifier_id = nn.Linear(
-                model_output_dim, total_number_of_bees
-            )  # Multi-class
-            self.classifier_class = nn.Linear(model_output_dim, 1)  # Binary (0/1)
-            self.regressor_angle = nn.Linear(model_output_dim, 1)  # Real-valued
-
-        def forward(self, z):
-            """Forward pass through the linear evaluation head.
-
-            Args:
-                z: Representation tensor of shape (batch_size, model_output_dim),
-                    where `model_output_dim` is the output dimension of the encoder.
-
-            Returns:
-                Tuple of (bee ID logits, bee class logit, bee angle prediction). Note
-                that each of these tensors may have an additional batch dimension.
-            """
-            id_logits = self.classifier_id(z)
-            class_logit = self.classifier_class(z)
-            angle_pred = self.regressor_angle(z)
-            return id_logits, class_logit, angle_pred
-
     # Initialize the linear evaluation head
-    linear_evaluation_head = LinearEvaluationHead(model.module.output_dim)
+    linear_evaluation_head = LinearEvaluationHead(LINEAR_PREDICTORS_INPUT_DIM)
     linear_evaluation_head = linear_evaluation_head.to(DEVICE)
+
+    # Get data loaders for training and testing
+    train_dataloader = get_representation_dataloader(
+        representations_path,
+        mode="train_and_validate",
+        batch_size=LINEAR_PREDICTORS_BATCH_SIZE,
+    )
+    test_dataloader = get_representation_dataloader(
+        representations_path,
+        mode="test",
+        batch_size=LINEAR_PREDICTORS_BATCH_SIZE,
+    )
 
     # Prepare loss functions for the three tasks
     criterion_id = nn.CrossEntropyLoss()  # For bee ID classification (multi-class)
@@ -107,10 +117,13 @@ def train_and_test_linear_predictors(
     criterion_angle = nn.MSELoss()  # For bee orientation regression (real-valued)
 
     # Prepare optimizer for the linear evaluation head
-    optimizer = torch.optim.Adam(linear_evaluation_head.parameters(), lr=learning_rate)
+    optimizer = torch.optim.Adam(
+        linear_evaluation_head.parameters(),
+        lr=LINEAR_PREDICTORS_LEARNING_RATE,
+    )
 
     # --- Training ---
-    print(f"\tTraining linear evaluation head for {train_epochs} epochs...")
+    print(f"\tTraining linear evaluation head for {LINEAR_PREDICTORS_EPOCHS} epochs...")
 
     linear_evaluation_head.train()  # Set the model to training mode
     linear_evaluation_head.zero_grad()  # Zero gradients, just to be safe
@@ -118,7 +131,7 @@ def train_and_test_linear_predictors(
     total_train_samples = len(train_dataloader.dataset)
 
     # Iterate over epochs
-    for _ in range(train_epochs):
+    for epoch in range(LINEAR_PREDICTORS_EPOCHS):
         training_loss_epoch_id = 0
         training_loss_epoch_class = 0
         training_loss_epoch_angle = 0
@@ -128,17 +141,16 @@ def train_and_test_linear_predictors(
         # Train for one epoch
         # One pass through the training dataset
         for batch in train_dataloader:
-            x, id_, class_, angle = batch
+            z, id_, class_, angle = batch
 
             # Data conversions, move data to target device
             # Note: PyTorch DataLoader already returns tensors
-            x = x.to(DEVICE)
+            z = z.to(DEVICE)
             id_ = id_.to(DEVICE)
             class_ = class_.to(DEVICE, dtype=torch.float32)
             angle = angle.to(DEVICE, dtype=torch.float32)
 
             # Forward pass
-            z = model(x)
             id_logits, class_logit, angle_pred = linear_evaluation_head(z)
 
             # Compute training loss
@@ -177,11 +189,11 @@ def train_and_test_linear_predictors(
 
     with torch.no_grad():
         for batch in test_dataloader:
-            x, id_, class_, angle = batch
+            z, id_, class_, angle = batch
 
             # Data conversions, move data to target device
             # Note: PyTorch DataLoader already returns tensors
-            x = x.to(DEVICE)
+            z = z.to(DEVICE)
             id_ = id_.to(DEVICE)
             class_ = class_.to(DEVICE, dtype=torch.float32)
             angle = angle.to(DEVICE, dtype=torch.float32)
@@ -192,7 +204,6 @@ def train_and_test_linear_predictors(
             angle_targets.extend(angle.cpu().numpy())
 
             # Forward pass
-            z = model(x)
             id_logits, class_logit, angle_pred = linear_evaluation_head(z)
 
             # Compute test loss
@@ -226,7 +237,3 @@ def train_and_test_linear_predictors(
     avg_test_mae_angle = float(
         np.abs(np.array(angle_predictions) - np.array(angle_targets)).mean()
     )
-
-    # Unfreeze the encoder
-    for param in model.parameters():
-        param.requires_grad = True
