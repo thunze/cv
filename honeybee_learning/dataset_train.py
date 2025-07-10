@@ -87,13 +87,13 @@ class HoneybeeImagePairDataset(Dataset):
         img1 = torch.from_numpy(img1).float() / 255.0
         img2 = torch.from_numpy(img2).float() / 255.0
 
-        # Apply transformations if specified
-        if self.transform:
-            img1, im2 = self.transform((img1,img2))
-
         # Convert to RGB
         img1 = img1.repeat(3, 1, 1)
         img2 = img2.repeat(3, 1, 1)
+
+        # Apply transformations if specified
+        if self.transform:
+            img1, img2 = self.transform((img1,img2))
 
         return HoneybeeImagePair(x1=img1, x2=img2)
 
