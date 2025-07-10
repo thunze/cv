@@ -58,9 +58,9 @@ def precalculate_representations(
     model.load_state_dict(torch.load(checkpoint_path, weights_only=True))  # Load state
 
     # Remove the last layer of the projection head to get larger representations.
-    # Slicing at -3 because of ReLU and batch norm.
+    slice_end = -4 if model_type == "simclr" else -3  # Slice after linear layer
     model.module.projection_head.layers = nn.Sequential(
-        *list(model.module.projection_head.layers.children())[:-3]
+        *list(model.module.projection_head.layers.children())[:slice_end]
     )
     model = model.to(DEVICE)  # Move model to the target device
 
@@ -70,7 +70,11 @@ def precalculate_representations(
     num_representations = len(dataloader.dataset)
 
     representations = np.empty(
-        (num_representations, model.module.output_dim), dtype=np.float32
+        (
+            num_representations,
+            model.module.projection_head.layers[-1].out_features,  # Linear layer
+        ),
+        dtype=np.float32,
     )
 
     # Set the model to evaluation mode
