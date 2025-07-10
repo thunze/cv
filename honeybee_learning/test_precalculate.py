@@ -58,7 +58,7 @@ def precalculate_representations(
     model.load_state_dict(torch.load(checkpoint_path, weights_only=True))  # Load state
 
     # Remove the last layer of the projection head to get larger representations.
-    slice_end = -2 if model_type == "simclr" else -1  # Slice after ReLU
+    slice_end = 3  # Slice after first ReLU
     model.module.projection_head.layers = nn.Sequential(
         *list(model.module.projection_head.layers.children())[:slice_end]
     )
@@ -93,7 +93,8 @@ def precalculate_representations(
 
     # Save the representations to a file
     representations_filepath = (
-        REPRESENTATIONS_PATH / f"{checkpoint_path.stem}_representations_2048_relu.npy"
+        REPRESENTATIONS_PATH
+        / f"{checkpoint_path.stem}_representations_2048_first_relu.npy"
     )
     print(f"\nSaving representations to {representations_filepath}...")
     np.save(representations_filepath, representations)
