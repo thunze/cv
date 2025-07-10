@@ -18,9 +18,8 @@ from honeybee_learning.config import (
     VISUALIZATION_NUM_SAMPLES,
 )
 from honeybee_learning.dataset_test import get_representation_dataloader
-
-
-# TODO: Add docstrings, make plots better
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import silhouette_score
 
 
 def get_pca_projections(representations, n_components=3):
@@ -32,7 +31,8 @@ def get_pca_projections(representations, n_components=3):
     :return: The projections of shape (N, n_components)
     """
     my_pca = PCA(n_components=n_components)
-    projections = my_pca.fit_transform(representations)
+    standardized = StandardScaler().fit_transform(representations)
+    projections = my_pca.fit_transform(standardized)
     return projections
 
 
@@ -45,11 +45,16 @@ def get_tsne_projections(representations, n_components=3):
     :return: The projections of shape (N, n_components)
     """
     my_tsne = TSNE(n_components=n_components)
-    projections = my_tsne.fit_transform(representations)
+    standardized = StandardScaler().fit_transform(representations)
+
+    pca = PCA(n_components=50)
+    reduced = pca.fit_transform(standardized)
+
+    projections = my_tsne.fit_transform(reduced)
     return projections
 
 
-def evaluate(representations_filepath: Path):
+def evaluate(representations_filepath: Path, plot_figs = False):
     """
     Using a filepath to precalculated representations, samples them, projects them into 3-dimensional space and then
     plots the results.
@@ -61,9 +66,18 @@ def evaluate(representations_filepath: Path):
     )
     # Load representation and metadata from the dataloader
     representations, labels = extract_representations_and_labels(dataloader)
+
+    # Print silhouette score for all targets
+    score1 = silhouette_score(representations, labels[:, 0])
+    print("Silhouette Score bee id :", score1)
+    score2 = silhouette_score(representations, labels[:, 1])
+    print("Silhouette Score class :", score2)
+    score3 = silhouette_score(representations, labels[:, 2])
+    print("Silhouette Score angle :", score3)
+
     # Create and save plots
     evaluate_samples(
-        representations, labels, representations_filepath.stem, plot_figs=True
+        representations, labels, representations_filepath.stem, plot_figs=plot_figs
     )
 
 
@@ -110,16 +124,16 @@ def evaluate_samples(representations, labels, data_title, plot_figs=False):
     # Plots for the honeybee-id projections
     for projection, name in sample_id_projections:
         plots.append(
-            (plot_bee_id(projection, sample_id_labels[:, 0]), f"{name}_bee_id")
+            (plot_bee_id(projection, sample_id_labels[:, 0], name), f"{name}_bee_id")
         )
 
     # Plots for the randomly sampled projections
     for projection, name in random_sample_projections:
         plots.append(
-            (plot_class(projection, random_sample_labels[:, 1]), f"{name}_class")
+            (plot_class(projection, random_sample_labels[:, 1], name), f"{name}_class")
         )
         plots.append(
-            (plot_angle(projection, random_sample_labels[:, 2]), f"{name}_angle")
+            (plot_angle(projection, random_sample_labels[:, 2], name), f"{name}_angle")
         )
 
     # Create a folder to save all the figures in
@@ -128,7 +142,6 @@ def evaluate_samples(representations, labels, data_title, plot_figs=False):
 
     # Save all created plots, optionally display them
     for fig, plot_name in plots:
-        fig.suptitle(f"{data_title}_{plot_name}")
         plot_filepath = plot_folder / f"{plot_name}.png"
         fig.savefig(plot_filepath)
         if plot_figs:
@@ -203,7 +216,7 @@ def extract_representations_and_labels(dataloader):
     return representations, labels
 
 
-def plot_bee_id(projections, labels):
+def plot_bee_id(projections, labels, reduction_name):
     """
     Creates a scatter plot for the 3-dimensional representations, colored by the bee_id contained in labels.
     :param projections: An array of shape (N, 3) containing the projected representations.
@@ -219,13 +232,13 @@ def plot_bee_id(projections, labels):
         projections[:, 2],
         c=labels,
         cmap="tab20",
-        s=15,
+        s=5,
         alpha=0.8,
     )
     ax.set_xlabel("Component 1")
     ax.set_ylabel("Component 2")
     ax.set_zlabel("Component 3")
-    ax.set_title("Projection colored by Bee ID")
+    ax.set_title(f"{reduction_name} projection colored by Bee ID")
 
     cbar = fig.colorbar(scatter, ax=ax, shrink=0.6, pad=0.1)
     cbar.set_label("Bee ID")
@@ -233,7 +246,7 @@ def plot_bee_id(projections, labels):
     return fig
 
 
-def plot_class(projections, labels):
+def plot_class(projections, labels, reduction_name):
     """
     Creates a scatter plot for the 3-dimensional representations, colored by the class contained in labels.
     :param projections: An array of shape (N, 3) containing the projected representations.
@@ -253,7 +266,7 @@ def plot_class(projections, labels):
         projections[class0_mask, 2],
         c="royalblue",
         label="Class 0",
-        s=15,
+        s=5,
         alpha=0.8,
     )
     ax.scatter(
@@ -269,14 +282,14 @@ def plot_class(projections, labels):
     ax.set_xlabel("Component 1")
     ax.set_ylabel("Component 2")
     ax.set_zlabel("Component 3")
-    ax.set_title("Projection by Binary Class")
+    ax.set_title(f"{reduction_name} Projection by Binary Class")
 
     ax.legend(title="Class", loc="best")
 
     return fig
 
 
-def plot_angle(projections, labels):
+def plot_angle(projections, labels, reduction_name):
     """
     Creates a scatter plot for the 3-dimensional representations, colored by the angle contained in labels.
     Visualizes the points in 3-d space using a continuous HSV colormap to represent the angles in degrees.
@@ -296,13 +309,13 @@ def plot_angle(projections, labels):
         projections[:, 2],
         c=angle_norm,
         cmap="hsv",
-        s=15,
+        s=5,
         alpha=0.8,
     )
     ax.set_xlabel("Component 1")
     ax.set_ylabel("Component 2")
     ax.set_zlabel("Component 3")
-    ax.set_title("Projection colored by Angle")
+    ax.set_title(f"{reduction_name} Projection colored by Angle")
 
     cbar = fig.colorbar(scatter, ax=ax, shrink=0.6, pad=0.1)
     cbar.set_label("Angle (degrees)")
