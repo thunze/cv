@@ -9,7 +9,7 @@ from lightly.models.utils import get_weight_decay_parameters
 from lightly.utils.lars import LARS
 from lightly.utils.scheduler import CosineWarmupScheduler
 from torch import nn
-
+from .image_transformations import crop_resize_flip
 from .config import DEVICE
 from .dataset_train import get_train_dataloader
 from .train import train
@@ -101,7 +101,11 @@ def train_simclr(*, log_to_wandb: bool = False) -> None:
     """
 
     # Prepare loading training and validation data
-    train_pair_dataloader = get_train_dataloader(mode="train", batch_size=BATCH_SIZE)
+    train_pair_dataloader = get_train_dataloader(
+        mode="train",
+        batch_size=BATCH_SIZE,
+        transform=lambda pair: crop_resize_flip(pair)
+    )
     validate_pair_dataloader = get_train_dataloader(
         mode="validate", batch_size=BATCH_SIZE
     )
