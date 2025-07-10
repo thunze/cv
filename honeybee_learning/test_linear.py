@@ -9,9 +9,10 @@ from pathlib import Path
 
 import numpy as np
 import torch
+import wandb
 from torch import nn
 
-from .config import DEVICE, TOTAL_NUMBER_OF_BEES
+from .config import DEVICE, TOTAL_NUMBER_OF_BEES, WANDB_ENTITY, WANDB_PROJECT
 from .dataset_test import HoneybeeRepresentationSample, get_representation_dataloader
 
 __all__ = ["train_and_test_linear_predictors"]
@@ -95,6 +96,28 @@ def train_and_test_linear_predictors(
         log_to_wandb: Whether to log training and testing progress to
             Weights & Biases (wandb).
     """
+    # Prepare logging for the run
+    run_name = f"test_linear_{representations_path.stem}"
+    print(f"Starting training run {run_name!r}...")
+
+    # Initialize wandb run if enabled
+    if log_to_wandb:
+        wandb_run = wandb.init(
+            entity=WANDB_ENTITY,
+            project=WANDB_PROJECT,
+            anonymous="must",  # Force anonymous login, needed to create anonymous key
+            name=run_name,
+            config={
+                "representations_path": str(representations_path),
+                "linear_predictors_input_dim": LINEAR_PREDICTORS_INPUT_DIM,
+                "linear_predictors_batch_size": LINEAR_PREDICTORS_BATCH_SIZE,
+                "linear_predictors_epochs": LINEAR_PREDICTORS_EPOCHS,
+                "linear_predictors_learning_rate": LINEAR_PREDICTORS_LEARNING_RATE,
+            },
+        )
+    else:
+        wandb_run = None
+
     # Initialize the linear evaluation head
     linear_evaluation_head = LinearEvaluationHead(LINEAR_PREDICTORS_INPUT_DIM)
     linear_evaluation_head = linear_evaluation_head.to(DEVICE)
