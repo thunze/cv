@@ -93,7 +93,7 @@ def precalculate_representations(
 
     # Save the representations to a file
     representations_filepath = (
-        REPRESENTATIONS_PATH / f"{checkpoint_path.stem}_representations.npy"
+        REPRESENTATIONS_PATH / f"{checkpoint_path.stem}_representations_2048.npy"
     )
     print(f"\nSaving representations to {representations_filepath}...")
     np.save(representations_filepath, representations)

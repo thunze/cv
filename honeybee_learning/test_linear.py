@@ -19,7 +19,7 @@ __all__ = ["train_and_test_linear_predictors"]
 
 
 # Hyperparameters for linear evaluation head training
-LINEAR_PREDICTORS_INPUT_DIM = 128  # Output dimension of both SimCLR and VICReg models
+LINEAR_PREDICTORS_INPUT_DIM = 2048  # Output dimension of both SimCLR and VICReg models
 LINEAR_PREDICTORS_BATCH_SIZE = 256  # Batch size to use for training and testing
 LINEAR_PREDICTORS_EPOCHS = 25  # Number of epochs for which to train predictors
 LINEAR_PREDICTORS_LEARNING_RATE = 1e-3  # Learning rate to use for predictors
