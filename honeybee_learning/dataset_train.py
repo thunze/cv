@@ -10,8 +10,9 @@ import torch
 from numpy import load
 from torch.utils.data import DataLoader, Dataset
 
-from .config import CROPS_PATH, DATALOADER_NUM_WORKERS, METADATA_PATH
+from .config import CROPS_PATH, DATALOADER_NUM_WORKERS, METADATA_PATH, DATASET_CREATE_SHUFFLE_SEED, RATIO_SAMPLE
 from .dataset_split import split_pairs
+import random
 
 __all__ = [
     "HoneybeeImagePair",
@@ -45,12 +46,20 @@ class HoneybeeImagePairDataset(Dataset):
     """
 
     def __init__(self, *, mode: Literal["train", "validate", "test"]):
+
         # Load images and metadata from file
         self.images = load(CROPS_PATH)
         self.metadata = load(METADATA_PATH)
 
         # Build set of pairs to use for selected mode and seed
-        self.pairs = [p for p in split_pairs(self.metadata) if p["set"] == mode]
+        all_pairs = [p for p in split_pairs(self.metadata) if p["set"] == mode]
+
+        # Sample a fraction of the pairs randomly
+        total = len(all_pairs)
+        sample_size = int(RATIO_SAMPLE * total)
+
+        rng = random.Random(DATASET_CREATE_SHUFFLE_SEED)
+        self.pairs = rng.sample(all_pairs, sample_size)
 
     def __len__(self):
         return len(self.pairs)

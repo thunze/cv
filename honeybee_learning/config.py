@@ -49,6 +49,7 @@ DATASET_CREATE_SHUFFLE = True  # Whether to use shuffling in dataset creation or
 DATASET_CREATE_SHUFFLE_SEED = 42  # Seed to use when shuffling in dataset creation
 TRAIN_RATIO = 0.7  # Amount of the data to use for training
 VALIDATION_RATIO = 0.15  # Amount of the data to use for validation
+RATIO_SAMPLE = 1.0 # Ratio of the data to use for sampling the training/val data. 1.0 = use everything.
 
 # Training and validation
 DEVICE = "cuda"  # Device to train and run the model on, typically a GPU
