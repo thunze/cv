@@ -58,7 +58,7 @@ def precalculate_representations(
     model.load_state_dict(torch.load(checkpoint_path, weights_only=True))  # Load state
     model = model.to(DEVICE)  # Move model to the target device
 
-    # Get data loaders for both `train_and_validate` and `test` modes
+    # Get data loader
     batch_size = REPRESENTATION_PRECALCULATION_BATCH_SIZE
     dataloader = get_single_dataloader(batch_size=batch_size)
     num_representations = len(dataloader.dataset)
