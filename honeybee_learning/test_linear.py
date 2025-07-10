@@ -19,7 +19,7 @@ __all__ = ["train_and_test_linear_predictors"]
 
 # Hyperparameters for linear evaluation head training
 LINEAR_PREDICTORS_INPUT_DIM = 128  # Output dimension of both SimCLR and VICReg models
-LINEAR_PREDICTORS_BATCH_SIZE = 64  # Batch size to use for training and testing
+LINEAR_PREDICTORS_BATCH_SIZE = 256  # Batch size to use for training and testing
 LINEAR_PREDICTORS_EPOCHS = 10  # Number of epochs for which to train predictors
 LINEAR_PREDICTORS_LEARNING_RATE = 1e-3  # Learning rate to use for predictors
 
@@ -123,7 +123,7 @@ def train_and_test_linear_predictors(
     )
 
     # --- Training ---
-    print(f"\tTraining linear evaluation head for {LINEAR_PREDICTORS_EPOCHS} epochs...")
+    print(f"Training linear evaluation head for {LINEAR_PREDICTORS_EPOCHS} epochs...")
 
     linear_evaluation_head.train()  # Set the model to training mode
     linear_evaluation_head.zero_grad()  # Zero gradients, just to be safe
@@ -136,11 +136,15 @@ def train_and_test_linear_predictors(
         training_loss_epoch_class = 0
         training_loss_epoch_angle = 0
 
+        print(f"\nEpoch {epoch + 1}/{LINEAR_PREDICTORS_EPOCHS}: Training...")
+
         batch: HoneybeeRepresentationSample
 
         # Train for one epoch
         # One pass through the training dataset
-        for batch in train_dataloader:
+        for i, batch in enumerate(train_dataloader):
+            print(f"\tTraining on batch {i + 1}/{len(train_dataloader)}...")
+
             z, id_, class_, angle = batch
 
             # Data conversions, move data to target device
@@ -174,7 +178,7 @@ def train_and_test_linear_predictors(
         avg_training_loss_epoch_angle = training_loss_epoch_angle / total_train_samples
 
     # --- Testing ---
-    print("\tTesting linear evaluation head on test dataset...")
+    print("\nTesting linear evaluation head on test dataset...")
 
     linear_evaluation_head.eval()  # Set the model to evaluation mode
     total_test_samples = len(test_dataloader.dataset)
@@ -188,7 +192,9 @@ def train_and_test_linear_predictors(
     angle_predictions, angle_targets = [], []
 
     with torch.no_grad():
-        for batch in test_dataloader:
+        for i, batch in enumerate(test_dataloader):
+            print(f"\tTesting on batch {i + 1}/{len(test_dataloader)}...")
+
             z, id_, class_, angle = batch
 
             # Data conversions, move data to target device
