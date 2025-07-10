@@ -1,4 +1,6 @@
-"""Test dataset and data loading functions."""
+"""Dataset implementations and data loading functions for evaluating self-supervised
+representation learning models on the honeybee dataset.
+"""
 
 from __future__ import annotations
 
