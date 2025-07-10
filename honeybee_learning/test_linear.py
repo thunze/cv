@@ -21,7 +21,7 @@ __all__ = ["train_and_test_linear_predictors"]
 # Hyperparameters for linear evaluation head training
 LINEAR_PREDICTORS_INPUT_DIM = 128  # Output dimension of both SimCLR and VICReg models
 LINEAR_PREDICTORS_BATCH_SIZE = 256  # Batch size to use for training and testing
-LINEAR_PREDICTORS_EPOCHS = 10  # Number of epochs for which to train predictors
+LINEAR_PREDICTORS_EPOCHS = 25  # Number of epochs for which to train predictors
 LINEAR_PREDICTORS_LEARNING_RATE = 1e-3  # Learning rate to use for predictors
 
 
@@ -166,8 +166,6 @@ def train_and_test_linear_predictors(
         # Train for one epoch
         # One pass through the training dataset
         for i, batch in enumerate(train_dataloader):
-            print(f"\tTraining on batch {i + 1}/{len(train_dataloader)}...")
-
             z, id_, class_, angle = batch
 
             # Data conversions, move data to target device
@@ -196,9 +194,27 @@ def train_and_test_linear_predictors(
             optimizer.zero_grad()  # Zero the gradients for the next iteration
 
         # Compute average training loss for the epoch
-        avg_training_loss_epoch_id = training_loss_epoch_id / total_train_samples
-        avg_training_loss_epoch_class = training_loss_epoch_class / total_train_samples
+        avg_training_loss_epoch_id = training_loss_epoch_id / len(train_dataloader)
+        avg_training_loss_epoch_class = training_loss_epoch_class / len(
+            train_dataloader
+        )
         avg_training_loss_epoch_angle = training_loss_epoch_angle / total_train_samples
+
+        # Log to standard output
+        log_data_epoch = {
+            "train/loss/id": avg_training_loss_epoch_id,
+            "train/loss/class": avg_training_loss_epoch_class,
+            "train/loss/angle": avg_training_loss_epoch_angle,
+        }
+        for key, value in log_data_epoch.items():
+            if isinstance(value, float):
+                print(f"\t{key}: {value:.5f}")
+            else:
+                print(f"\t{key}: {value}")
+
+        # Log to wandb if enabled
+        if wandb_run is not None:
+            wandb_run.log(log_data_epoch)
 
     # --- Testing ---
     print("\nTesting linear evaluation head on test dataset...")
@@ -216,8 +232,6 @@ def train_and_test_linear_predictors(
 
     with torch.no_grad():
         for i, batch in enumerate(test_dataloader):
-            print(f"\tTesting on batch {i + 1}/{len(test_dataloader)}...")
-
             z, id_, class_, angle = batch
 
             # Data conversions, move data to target device
@@ -253,10 +267,11 @@ def train_and_test_linear_predictors(
             angle_predictions.extend(angle_pred.squeeze().cpu().numpy())
 
     # Compute test metrics
-    avg_test_loss_id = test_loss_epoch_id / total_test_samples
-    avg_test_loss_class = test_loss_epoch_class / total_test_samples
+    avg_test_loss_id = test_loss_epoch_id / len(test_dataloader)
+    avg_test_loss_class = test_loss_epoch_class / len(test_dataloader)
     avg_test_loss_angle = test_loss_epoch_angle / total_test_samples
 
+    # Calculate accuracies and MAE
     avg_test_accuracy_id = float(
         (np.array(id_predictions) == np.array(id_targets)).mean()
     )
@@ -266,3 +281,38 @@ def train_and_test_linear_predictors(
     avg_test_mae_angle = float(
         np.abs(np.array(angle_predictions) - np.array(angle_targets)).mean()
     )
+
+    # Calculate precision and recall for the class prediction task
+    class_predictions = np.array(class_predictions)
+    class_targets = np.array(class_targets)
+    class_precision = float(
+        np.sum((class_predictions == 1) & (class_targets == 1))
+        / np.sum(class_predictions == 1)
+        if np.sum(class_predictions == 1) > 0
+        else 0.0
+    )
+    class_recall = float(
+        np.sum((class_predictions == 1) & (class_targets == 1))
+        / np.sum(class_targets == 1)
+        if np.sum(class_targets == 1) > 0
+        else 0.0
+    )
+
+    # Gather data to log
+    log_data = {
+        "test/loss/id": avg_test_loss_id,
+        "test/loss/class": avg_test_loss_class,
+        "test/loss/angle": avg_test_loss_angle,
+        "test/accuracy/id": avg_test_accuracy_id,
+        "test/accuracy/class": avg_test_accuracy_class,
+        "test/precision/class": class_precision,
+        "test/recall/class": class_recall,
+        "test/mae/angle": avg_test_mae_angle,
+    }
+
+    # Log to standard output
+    for key, value in log_data.items():
+        if isinstance(value, float):
+            print(f"\t{key}: {value:.5f}")
+        else:
+            print(f"\t{key}: {value}")
