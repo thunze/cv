@@ -10,7 +10,13 @@ import torch
 from numpy import load
 from torch.utils.data import DataLoader, Dataset
 
-from .config import CROPS_PATH, DATALOADER_NUM_WORKERS, METADATA_PATH, DATASET_CREATE_SHUFFLE_SEED, RATIO_SAMPLE
+from .config import (
+    CROPS_PATH,
+    DATALOADER_NUM_WORKERS,
+    METADATA_PATH,
+    DATASET_CREATE_SHUFFLE_SEED,
+    RATIO_SAMPLE
+)
 from .dataset_split import split_pairs
 import random
 
@@ -45,11 +51,13 @@ class HoneybeeImagePairDataset(Dataset):
             This determines which predefined subset of the dataset to use.
     """
 
-    def __init__(self, *, mode: Literal["train", "validate", "test"]):
+    def __init__(self, *, mode: Literal["train", "validate", "test"], transform = None):
 
         # Load images and metadata from file
         self.images = load(CROPS_PATH)
         self.metadata = load(METADATA_PATH)
+        self.mode = mode
+        self.transform = transform
 
         # Build set of pairs to use for selected mode and seed
         all_pairs = [p for p in split_pairs(self.metadata) if p["set"] == mode]
@@ -79,6 +87,10 @@ class HoneybeeImagePairDataset(Dataset):
         img1 = torch.from_numpy(img1).float() / 255.0
         img2 = torch.from_numpy(img2).float() / 255.0
 
+        # Apply transformations if specified
+        if self.transform:
+            img1, im2 = self.transform((img1,img2))
+
         # Convert to RGB
         img1 = img1.repeat(3, 1, 1)
         img2 = img2.repeat(3, 1, 1)
@@ -87,7 +99,7 @@ class HoneybeeImagePairDataset(Dataset):
 
 
 def get_train_dataloader(
-    *, mode: Literal["train", "validate", "test"], batch_size: int
+    *, mode: Literal["train", "validate", "test"], batch_size: int, transform = None
 ) -> DataLoader:
     """Get a `DataLoader` using `HoneybeeImagePairDataset` under the hood for the
     honeybee dataset.
@@ -99,7 +111,7 @@ def get_train_dataloader(
     Returns:
         A `DataLoader` object for the specified dataset split.
     """
-    dataset = HoneybeeImagePairDataset(mode=mode)
+    dataset = HoneybeeImagePairDataset(mode=mode, transform=transform)
 
     return DataLoader(
         dataset,
