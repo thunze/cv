@@ -56,6 +56,12 @@ def precalculate_representations(
     model = SimCLR() if model_type == "simclr" else VICReg()
     model = nn.DataParallel(model)  # Enable data parallelism for multi-GPU inference
     model.load_state_dict(torch.load(checkpoint_path, weights_only=True))  # Load state
+
+    # Remove the last layer of the projection head to get larger representations.
+    # Slicing at -3 because of ReLU and batch norm.
+    model.module.projection_head.layers = nn.Sequential(
+        *list(model.module.projection_head.layers.children())[:-3]
+    )
     model = model.to(DEVICE)  # Move model to the target device
 
     # Get data loader
