@@ -19,6 +19,7 @@ dependencies = [
 honeybee-learning = "honeybee_learning.entrypoints:train"
 precalculate-representations = "honeybee_learning.entrypoints:precalculate_representations"
 preprocessing = "honeybee_learning.preprocessing:main"
+test-linear = "honeybee_learning.entrypoints:test_linear"
 
 [dependency-groups]
 dev = [

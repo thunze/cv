@@ -5,12 +5,14 @@ model's frozen encoder.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
-from .config import DEVICE
+from .config import DEVICE, METADATA_PATH
 from .dataset_test import HoneybeeRepresentationSample
 
 __all__ = ["train_and_test_linear_predictors"]
@@ -22,16 +24,13 @@ LINEAR_PREDICTORS_LEARNING_RATE = 1e-3  # Learning rate to use for predictors
 
 
 def train_and_test_linear_predictors(
-    model: nn.DataParallel,
-    train_dataloader: DataLoader,
-    test_dataloader: DataLoader,
-    total_number_of_bees: int,
-    train_epochs: int,
-    learning_rate: float,
+    representations_path: Path, *, log_to_wandb: bool = False
 ) -> None:
-    """With `model` frozen, train three linear predictors on the training dataset
-    provided by `train_dataloader`, and test them on the test dataset provided by
-    `test_dataloader`.
+    """Train three linear predictors on top of a frozen self-supervised representation
+    learning model, and evaluate their performance on the honeybee dataset.
+
+    Uses a combination of the training and validation splits of the honeybee dataset
+    to train the linear predictors, and the test split to evaluate their performance.
 
     The linear predictors are trained in a supervised manner to predict:
 
@@ -42,18 +41,20 @@ def train_and_test_linear_predictors(
     All three predictors are wrapped in a single `LinearEvaluationHead` module for
     more efficient training and testing.
 
+    The self-supervised representation learning model is not used directly here.
+    Instead, the precalculated representations of the honeybee images are loaded from
+    `representations_path`, which should point to a file containing the
+    representations of the honeybee images in the dataset in the same order as the
+    metadata file containing the labels for the three tasks at `METADATA_PATH`.
+
+    For more information on the process of precalculating the representations, see
+    the `test_precalculate` module.
+
     Args:
-        model: Model to validate.
-        train_dataloader: `DataLoader` providing the training `HoneybeeDataset`; used
-            to train the linear predictors.
-        test_dataloader: `DataLoader` providing the test `HoneybeeDataset`; used to
-            evaluate the performance of the linear predictors.
-        total_number_of_bees: Total number of unique bees in the honeybee dataset
-            (across all splits); used to define the output dimension of the bee ID
-            classifier.
-        train_epochs: Number of epochs to train the linear evaluation head on the
-            training dataset for.
-        learning_rate: Learning rate for the linear evaluation head optimizer.
+        representations_path: Path to the file containing precalculated
+            representations of all honeybee images in the dataset.
+        log_to_wandb: Whether to log training and testing progress to
+            Weights & Biases (wandb).
     """
     assert torch.is_grad_enabled()  # We need gradients for training
     assert not model.training
