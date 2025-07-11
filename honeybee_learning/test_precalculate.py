@@ -37,8 +37,8 @@ def precalculate_representations(
     learning model.
 
     The representations are saved in a file named just like the model checkpoint,
-    but ending with `_representations.npy` instead of `.pth`. The file will be saved
-    in the configured `REPRESENTATIONS_PATH` directory.
+    but ending with `_representations_*.npy` instead of `.pth`. The file will be
+    saved in the configured `REPRESENTATIONS_PATH` directory.
 
     Args:
         model_type: Type of the self-supervised representation learning model to use.
