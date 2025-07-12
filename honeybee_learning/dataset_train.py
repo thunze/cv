@@ -49,6 +49,7 @@ class HoneybeeImagePairDataset(Dataset):
     Args:
         mode: The dataset split to load. Can be 'train', 'validate', or 'test'.
             This determines which predefined subset of the dataset to use.
+        transform: Optional transformation function to apply to the images.
     """
 
     def __init__(self, *, mode: Literal["train", "validate", "test"], transform = None):
@@ -62,12 +63,15 @@ class HoneybeeImagePairDataset(Dataset):
         # Build set of pairs to use for selected mode and seed
         all_pairs = [p for p in split_pairs(self.metadata) if p["set"] == mode]
 
-        # Sample a fraction of the pairs randomly
-        total = len(all_pairs)
-        sample_size = int(RATIO_SAMPLE * total)
+        # Sample a fraction of the pairs randomly, if the ratio is not in the range of 0<RATIO_SAMPLE<1
+        if (RATIO_SAMPLE >= 1.0 or RATIO_SAMPLE <= 0):
+            self.pairs = all_pairs
+        else:
+            total = len(all_pairs)
+            sample_size = int(RATIO_SAMPLE * total)
 
-        rng = random.Random(DATASET_CREATE_SHUFFLE_SEED)
-        self.pairs = rng.sample(all_pairs, sample_size)
+            rng = random.Random(DATASET_CREATE_SHUFFLE_SEED)
+            self.pairs = rng.sample(all_pairs, sample_size)
 
     def __len__(self):
         return len(self.pairs)
@@ -107,6 +111,7 @@ def get_train_dataloader(
     Args:
         mode: The dataset split to load. Can be 'train', 'validate', or 'test'.
         batch_size: The batch size for the `DataLoader`.
+        transform: Optional transformation function to apply to images in the dataset.
 
     Returns:
         A `DataLoader` object for the specified dataset split.
