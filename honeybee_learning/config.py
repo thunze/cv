@@ -55,7 +55,7 @@ RATIO_SAMPLE = 1.0 # Ratio of the data to use for sampling the training/val data
 DEVICE = "cuda"  # Device to train and run the model on, typically a GPU
 DATALOADER_NUM_WORKERS = 16  # Number of processes used by `DataLoader` instances
 CHECKPOINT_EVERY_N_EPOCHS = 10  # Save model checkpoint every N epochs
-VISUALIZATION_NUM_SAMPLES = 1000
+VISUALIZATION_NUM_SAMPLES = 6000
 
 # Weights & Biases (wandb) configuration
 WANDB_ENTITY = "thunze"  # Team name
