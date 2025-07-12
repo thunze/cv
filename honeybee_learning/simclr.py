@@ -104,7 +104,7 @@ def train_simclr(*, log_to_wandb: bool = False) -> None:
     train_pair_dataloader = get_train_dataloader(
         mode="train",
         batch_size=BATCH_SIZE,
-        transform=lambda pair: crop_resize_flip(pair)
+        # transform=lambda pair: crop_resize_flip(pair) # Transformation to apply. Not used in main runs
     )
     validate_pair_dataloader = get_train_dataloader(
         mode="validate", batch_size=BATCH_SIZE
