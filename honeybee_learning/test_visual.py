@@ -21,11 +21,12 @@ from honeybee_learning.dataset_test import get_representation_dataloader
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import silhouette_score
 
+__all__ = ["evaluate", "evaluate_samples"]
 
 def get_pca_projections(representations, n_components=3):
     """
     Given a set of representations in the shape (N, D) with N being the number of samples and D being the dimensionality,
-    reduces them to n_components dimensions using PCA.
+    standardizes them using StandardScaler and then reduces them to n_components dimensions using PCA.
     :param representations: The representations to apply PCA on.
     :param n_components: The dimensionality to reduce to. Default: 3
     :return: The projections of shape (N, n_components)
@@ -36,20 +37,22 @@ def get_pca_projections(representations, n_components=3):
     return projections
 
 
-def get_tsne_projections(representations, n_components=3):
+def get_tsne_projections(representations, n_components=3, pca_components = 32):
     """
     Given a set of representations in the shape (N, D) with N being the number of samples and D being the dimensionality,
-    projects them into n_components dimensions using t-SNE.
+    standardizes them using StandardScaler, applies PCA and then projects them into n_components dimensions using t-SNE.
     :param representations: The representations to apply t-SNE on.
     :param n_components: The dimensionality to project to. Default: 3
+    :param pca_components: The dimensionality output of the PCA applied.
     :return: The projections of shape (N, n_components)
     """
-    my_tsne = TSNE(n_components=n_components)
+    my_tsne = TSNE(
+        n_components=n_components
+    )
     standardized = StandardScaler().fit_transform(representations)
 
-    pca = PCA(n_components=50)
+    pca = PCA(n_components=pca_components)
     reduced = pca.fit_transform(standardized)
-
     projections = my_tsne.fit_transform(reduced)
     return projections
 
@@ -66,14 +69,6 @@ def evaluate(representations_filepath: Path, plot_figs = False):
     )
     # Load representation and metadata from the dataloader
     representations, labels = extract_representations_and_labels(dataloader)
-
-    # Print silhouette score for all targets
-    score1 = silhouette_score(representations, labels[:, 0])
-    print("Silhouette Score bee id :", score1)
-    score2 = silhouette_score(representations, labels[:, 1])
-    print("Silhouette Score class :", score2)
-    score3 = silhouette_score(representations, labels[:, 2])
-    print("Silhouette Score angle :", score3)
 
     # Create and save plots
     evaluate_samples(
@@ -148,6 +143,30 @@ def evaluate_samples(representations, labels, data_title, plot_figs=False):
             plt.show()
         plt.close(fig)
 
+    # Calculate silhouette score for all targets
+    score_full_id = silhouette_score(representations, labels[:, 0])
+    score_full_class = silhouette_score(representations, labels[:, 1])
+    score_full_angle = silhouette_score(representations, labels[:, 2])
+
+    # Calculate silhouette scores for the two samples
+    score_sample_id = silhouette_score(sample_id_representations, sample_id_labels[:, 0])
+    score_random_class = silhouette_score(random_sample_representations, random_sample_labels[:, 1])
+    score_random_angle = silhouette_score(random_sample_representations, random_sample_labels[:, 2])
+
+    # Write silhouette scores to a text file
+    score_file_path = plot_folder / "silhouette_scores.txt"
+    with open(score_file_path, "w") as f:
+        f.write(f"Silhouette Scores for all representations:\n")
+        f.write(f"Bee ID: {score_full_id:.4f}\n")
+        f.write(f"Class: {score_full_class:.4f}\n")
+        f.write(f"Angle: {score_full_angle:.4f}\n\n")
+
+        f.write(f"Silhouette Scores for sample_id sample:\n")
+        f.write(f"Bee ID: {score_sample_id:.4f}\n\n")
+
+        f.write(f"Silhouette Scores for random_sample sample:\n")
+        f.write(f"Class: {score_random_class:.4f}\n")
+        f.write(f"Angle: {score_random_angle:.4f}\n")
 
 def create_sample(representations, labels, sample_size=5000, random=True):
     """
@@ -275,7 +294,7 @@ def plot_class(projections, labels, reduction_name):
         projections[class1_mask, 2],
         c="crimson",
         label="Class 1",
-        s=15,
+        s=5,
         alpha=0.8,
     )
 
