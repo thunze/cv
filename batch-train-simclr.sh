@@ -10,4 +10,4 @@ set -o pipefail
 set -x
 
 pip install uv==0.7.13
-uv run honeybee-learning --model simclr --wandb
+uv run train --model simclr --wandb

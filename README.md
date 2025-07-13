@@ -77,12 +77,12 @@ The `preprocessing` entrypoint is used to extract invididual frames from the vid
 uv run preprocessing
 ```
 
-#### `honeybee-learning`
+#### `train`
 
-The `honeybee-learning` entrypoint is the entrypoint for training the models. It is in fact a small CLI that allows you to select the model architecture to use (SimCLR or VICReg) and whether to log the training run to Weights & Biases or not. For details on its usage, run `uv run honeybee-learning --help`. For example, to train a SimCLR model with Weights & Biases logging enabled, you can run the following command:
+The `train` entrypoint is the entrypoint for training the models. It is in fact a small CLI that allows you to select the model architecture to use (SimCLR or VICReg) and whether to log the training run to Weights & Biases or not. For details on its usage, run `uv run train --help`. For example, to train a SimCLR model with Weights & Biases logging enabled, you can run the following command:
 
 ```shell
-uv run honeybee-learning --model simclr --wandb
+uv run train --model simclr --wandb
 ```
 
 The hyperparameters used for training the models can be configured in the `honeybee_learning/simclr.py` and `honeybee_learning/vicreg.py` files, respectively.
