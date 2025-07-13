@@ -26,12 +26,16 @@ __all__ = ["evaluate", "evaluate_samples"]
 
 
 def get_pca_projections(representations, n_components=3):
-    """
-    Given a set of representations in the shape (N, D) with N being the number of samples and D being the dimensionality,
-    standardizes them using StandardScaler and then reduces them to n_components dimensions using PCA.
-    :param representations: The representations to apply PCA on.
-    :param n_components: The dimensionality to reduce to. Default: 3
-    :return: The projections of shape (N, n_components)
+    """Given a set of representations in the shape (N, D) with N being the number of
+    samples and D being the dimensionality, standardize them using `StandardScaler`
+    and then reduce them to `n_components` dimensions using PCA.
+
+    Args:
+        representations: Representations to apply PCA on.
+        n_components: Dimensionality to reduce to (3 by default).
+
+    Returns:
+        Projections of shape (N, `n_components`).
     """
     my_pca = PCA(n_components=n_components)
     standardized = StandardScaler().fit_transform(representations)
@@ -40,13 +44,17 @@ def get_pca_projections(representations, n_components=3):
 
 
 def get_tsne_projections(representations, n_components=3, pca_components=32):
-    """
-    Given a set of representations in the shape (N, D) with N being the number of samples and D being the dimensionality,
-    standardizes them using StandardScaler, applies PCA and then projects them into n_components dimensions using t-SNE.
-    :param representations: The representations to apply t-SNE on.
-    :param n_components: The dimensionality to project to. Default: 3
-    :param pca_components: The dimensionality output of the PCA applied.
-    :return: The projections of shape (N, n_components)
+    """Given a set of representations in the shape (N, D) with N being the number of
+    samples and D being the dimensionality, standardize them using `StandardScaler`,
+    apply PCA and then project them into `n_components` dimensions using t-SNE.
+
+    Args:
+        representations: Representations to apply t-SNE on.
+        n_components: Dimensionality to project into (3 by default).
+        pca_components: Dimensionality output of the PCA applied (32 by default).
+
+    Returns:
+        Projections of shape (N, `n_components`).
     """
     my_tsne = TSNE(n_components=n_components)
     standardized = StandardScaler().fit_transform(representations)
@@ -58,10 +66,12 @@ def get_tsne_projections(representations, n_components=3, pca_components=32):
 
 
 def evaluate(representations_filepath: Path, plot_figs=False):
-    """
-    Using a filepath to precalculated representations, samples them, projects them into 3-dimensional space and then
-    plots the results.
-    :param representations_filepath: Path to the  .npy file containing the representations.
+    """Using a filepath to precalculated representations, sample from them, project
+    them into 3-dimensional space and then plot the results.
+
+    Args:
+        representations_filepath: Path to the `.npy` file containing the
+            representations.
     """
     # Create dataloader
     dataloader = get_representation_dataloader(
@@ -77,17 +87,20 @@ def evaluate(representations_filepath: Path, plot_figs=False):
 
 
 def evaluate_samples(representations, labels, data_title, plot_figs=False):
-    """
-    Takes two samples from the representations and labels provided. Then calculates the 3-dimensional projections
-    and plots them using matplotlib.pyplot. Figures are saved in the folder specified in config.py
-    :param representations: The learned representations of shape (N, D)
-    :param labels: The labels belonging to the representations with shape (N, 3)
-    :param data_title: Title to use for titling and saving the plots
-    :param plot_figs: Whether to plot the figs immediately.
-    :return:
+    """Take two samples from the representations and labels provided, then calculate
+    the 3-dimensional projections and plot them using `matplotlib.pyplot`.
+
+    Figures are saved in the directory specified in the `config` module.
+
+    Args:
+        representations: The learned representations of shape (N, D).
+        labels: The labels belonging to the representations with shape (N, 3).
+        data_title: Title to use for titling and saving the plots.
+        plot_figs: Whether to plot the figures immediately.
     """
 
-    # Take a sample, so we have a relatively equal split of different bees for visualizing bee id
+    # Take a sample, so we have a relatively equal split of different bees for
+    # visualizing bee ID
     sample_id_representations, sample_id_labels = create_sample(
         representations, labels, sample_size=VISUALIZATION_NUM_SAMPLES, random=False
     )
@@ -176,15 +189,21 @@ def evaluate_samples(representations, labels, data_title, plot_figs=False):
 
 
 def create_sample(representations, labels, sample_size=5000, random=True):
-    """
-    Creates a subsample of the given dataset with optional balanced sampling.
-    If random is true, creates a randomly sampled sample from representations and labels and returns it.
-    If it is false, samples them, so we get a relatively even distribution over all bee ids.
+    """Create a subsample of the given dataset with optional balanced sampling.
 
-    :param representations: The representations to draw the sample from.
-    :param labels: The labels to draw the sample from.
-    :param random (bool) : Whether to perform random sampling or draw a sample evenly distributed across all bee IDs.
-    :return: Tuple[np.ndarray, np.ndarray] Tuple containing the sampled representations and labels.
+    If `random` is `True`, creates a random sample from representations and labels
+    and returns it. If `random` is `False`, samples them, so we get a relatively even
+    distribution over all bee IDs.
+
+    Args:
+        representations: Representations to draw the sample from.
+        labels: Labels to draw the sample from.
+        sample_size: Number of samples to draw.
+        random: Whether to perform random sampling or draw a sample evenly distributed
+            across all bee IDs.
+
+    Returns:
+        Tuple containing the sampled representations and labels.
     """
 
     if random:
@@ -217,11 +236,16 @@ def create_sample(representations, labels, sample_size=5000, random=True):
 
 
 def extract_representations_and_labels(dataloader):
-    """
-    Given a dataloader for the HoneybeeRepresentationDataset, extracts the representations and labels.
+    """Given a data loader for the `HoneybeeRepresentationDataset`, extract the
+    representations and labels.
+
     Supports batch sizes > 1.
-    :param dataloader: The dataloader.
-    :return: A tuple containing the representations, labels.
+
+    Args:
+        dataloader: `DataLoader` for the `HoneybeeRepresentationDataset`.
+
+    Returns:
+        A tuple containing the representations, labels.
     """
     representations = []
     labels = []
@@ -243,11 +267,15 @@ def extract_representations_and_labels(dataloader):
 
 
 def plot_bee_id(projections, labels, reduction_name):
-    """
-    Creates a scatter plot for the 3-dimensional representations, colored by the bee_id contained in labels.
-    :param projections: An array of shape (N, 3) containing the projected representations.
-    :param labels: The associated labels containing the bee_ids.
-    :return: Returns the figure created.
+    """Create a scatter plot for 3-dimensional representations of honeybee images,
+    colored by the bee_id contained in the labels.
+
+    Args:
+        projections: Array of shape (N, 3) containing the projected representations.
+        labels: Associated labels containing the bee_ids.
+
+    Returns:
+        The generated figure.
     """
     fig = plt.figure(figsize=(15, 15))
     ax = fig.add_subplot(111, projection="3d")
@@ -273,11 +301,15 @@ def plot_bee_id(projections, labels, reduction_name):
 
 
 def plot_class(projections, labels, reduction_name):
-    """
-    Creates a scatter plot for the 3-dimensional representations, colored by the class contained in labels.
-    :param projections: An array of shape (N, 3) containing the projected representations.
-    :param labels: The associated labels containing the class.
-    :return: Returns the figure created.
+    """Create a scatter plot for 3-dimensional representations of honeybee images,
+    colored by the class contained in the labels.
+
+    Args:
+        projections: Array of shape (N, 3) containing the projected representations.
+        labels: Associated labels containing the class.
+
+    Returns:
+        The generated figure.
     """
     fig = plt.figure(figsize=(15, 15))
     ax = fig.add_subplot(111, projection="3d")
@@ -316,12 +348,18 @@ def plot_class(projections, labels, reduction_name):
 
 
 def plot_angle(projections, labels, reduction_name):
-    """
-    Creates a scatter plot for the 3-dimensional representations, colored by the angle contained in labels.
-    Visualizes the points in 3-d space using a continuous HSV colormap to represent the angles in degrees.
-    :param projections: An array of shape (N, 3) containing the projected representations.
-    :param labels: The associated labels containing the angle.
-    :return: Returns the figure created.
+    """Create a scatter plot for 3-dimensional representations of honeybee images,
+    colored by the angle contained in the labels.
+
+    Visualizes the points in 3D space using a continuous HSV colormap to represent
+    the angles in degrees.
+
+    Args:
+        projections: Array of shape (N, 3) containing the projected representations.
+        labels: Associated labels containing the angle in degrees.
+
+    Returns:
+        The generated figure.
     """
     fig = plt.figure(figsize=(15, 15))
     ax = fig.add_subplot(111, projection="3d")
