@@ -49,13 +49,13 @@ DATASET_CREATE_SHUFFLE = True  # Whether to use shuffling in dataset creation or
 DATASET_CREATE_SHUFFLE_SEED = 42  # Seed to use when shuffling in dataset creation
 TRAIN_RATIO = 0.7  # Amount of the data to use for training
 VALIDATION_RATIO = 0.15  # Amount of the data to use for validation
-RATIO_SAMPLE = 1.0 # Ratio of the data to use for sampling the training/val data. 1.0 = use everything.
+RATIO_SAMPLE = 1.0  # Portion of the data used for sampling train/val data (1.0 = 100%)
 
 # Training and validation
 DEVICE = "cuda"  # Device to train and run the model on, typically a GPU
 DATALOADER_NUM_WORKERS = 16  # Number of processes used by `DataLoader` instances
 CHECKPOINT_EVERY_N_EPOCHS = 10  # Save model checkpoint every N epochs
-VISUALIZATION_NUM_SAMPLES = 6000 # Size of sample to use in dimensionality reduction methods for visualization
+VISUALIZATION_NUM_SAMPLES = 6000  # Number of samples to use in dim. reduction methods
 
 # Weights & Biases (wandb) configuration
 WANDB_ENTITY = "thunze"  # Team name

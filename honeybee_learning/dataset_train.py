@@ -4,6 +4,7 @@ representation learning models on the honeybee dataset.
 
 from __future__ import annotations
 
+import random
 from typing import Literal, NamedTuple
 
 import torch
@@ -13,12 +14,11 @@ from torch.utils.data import DataLoader, Dataset
 from .config import (
     CROPS_PATH,
     DATALOADER_NUM_WORKERS,
-    METADATA_PATH,
     DATASET_CREATE_SHUFFLE_SEED,
-    RATIO_SAMPLE
+    METADATA_PATH,
+    RATIO_SAMPLE,
 )
 from .dataset_split import split_pairs
-import random
 
 __all__ = [
     "HoneybeeImagePair",
@@ -52,8 +52,7 @@ class HoneybeeImagePairDataset(Dataset):
         transform: Optional transformation function to apply to the images.
     """
 
-    def __init__(self, *, mode: Literal["train", "validate", "test"], transform = None):
-
+    def __init__(self, *, mode: Literal["train", "validate", "test"], transform=None):
         # Load images and metadata from file
         self.images = load(CROPS_PATH)
         self.metadata = load(METADATA_PATH)
@@ -63,8 +62,8 @@ class HoneybeeImagePairDataset(Dataset):
         # Build set of pairs to use for selected mode and seed
         all_pairs = [p for p in split_pairs(self.metadata) if p["set"] == mode]
 
-        # Sample a fraction of the pairs randomly, if the ratio is not in the range of 0<RATIO_SAMPLE<1
-        if (RATIO_SAMPLE >= 1.0 or RATIO_SAMPLE <= 0):
+        # Sample a fraction of the pairs randomly if 0 < RATIO_SAMPLE < 1
+        if RATIO_SAMPLE <= 0 or RATIO_SAMPLE >= 1:
             self.pairs = all_pairs
         else:
             total = len(all_pairs)
@@ -96,14 +95,14 @@ class HoneybeeImagePairDataset(Dataset):
         img2 = img2.repeat(3, 1, 1)
 
         # Apply transformations if specified
-        if self.transform:
-            img1, img2 = self.transform((img1,img2))
+        if self.transform is not None:
+            img1, img2 = self.transform((img1, img2))
 
         return HoneybeeImagePair(x1=img1, x2=img2)
 
 
 def get_train_dataloader(
-    *, mode: Literal["train", "validate", "test"], batch_size: int, transform = None
+    *, mode: Literal["train", "validate", "test"], batch_size: int, transform=None
 ) -> DataLoader:
     """Get a `DataLoader` using `HoneybeeImagePairDataset` under the hood for the
     honeybee dataset.

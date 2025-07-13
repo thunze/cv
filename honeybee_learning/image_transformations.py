@@ -1,10 +1,11 @@
-import torchvision.transforms.functional as F
-import torchvision.transforms
 import random
 
+import torchvision.transforms
+import torchvision.transforms.functional as F
 from torchvision import transforms
 
 __all__ = ["crop_resize_flip"]
+
 
 def random_transform(img):
     """
@@ -36,6 +37,7 @@ def random_transform(img):
     img = F.rotate(img, angle)
 
     return img
+
 
 def crop_resize_flip(image_pair):
     """

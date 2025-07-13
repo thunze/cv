@@ -12,16 +12,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
+from sklearn.metrics import silhouette_score
+from sklearn.preprocessing import StandardScaler
+
 from honeybee_learning.config import (
     DATASET_CREATE_SHUFFLE_SEED,
     FIGURES_PATH,
     VISUALIZATION_NUM_SAMPLES,
 )
 from honeybee_learning.dataset_test import get_representation_dataloader
-from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import silhouette_score
 
 __all__ = ["evaluate", "evaluate_samples"]
+
 
 def get_pca_projections(representations, n_components=3):
     """
@@ -37,7 +39,7 @@ def get_pca_projections(representations, n_components=3):
     return projections
 
 
-def get_tsne_projections(representations, n_components=3, pca_components = 32):
+def get_tsne_projections(representations, n_components=3, pca_components=32):
     """
     Given a set of representations in the shape (N, D) with N being the number of samples and D being the dimensionality,
     standardizes them using StandardScaler, applies PCA and then projects them into n_components dimensions using t-SNE.
@@ -46,9 +48,7 @@ def get_tsne_projections(representations, n_components=3, pca_components = 32):
     :param pca_components: The dimensionality output of the PCA applied.
     :return: The projections of shape (N, n_components)
     """
-    my_tsne = TSNE(
-        n_components=n_components
-    )
+    my_tsne = TSNE(n_components=n_components)
     standardized = StandardScaler().fit_transform(representations)
 
     pca = PCA(n_components=pca_components)
@@ -57,7 +57,7 @@ def get_tsne_projections(representations, n_components=3, pca_components = 32):
     return projections
 
 
-def evaluate(representations_filepath: Path, plot_figs = False):
+def evaluate(representations_filepath: Path, plot_figs=False):
     """
     Using a filepath to precalculated representations, samples them, projects them into 3-dimensional space and then
     plots the results.
@@ -149,9 +149,15 @@ def evaluate_samples(representations, labels, data_title, plot_figs=False):
     score_full_angle = silhouette_score(representations, labels[:, 2])
 
     # Calculate silhouette scores for the two samples
-    score_sample_id = silhouette_score(sample_id_representations, sample_id_labels[:, 0])
-    score_random_class = silhouette_score(random_sample_representations, random_sample_labels[:, 1])
-    score_random_angle = silhouette_score(random_sample_representations, random_sample_labels[:, 2])
+    score_sample_id = silhouette_score(
+        sample_id_representations, sample_id_labels[:, 0]
+    )
+    score_random_class = silhouette_score(
+        random_sample_representations, random_sample_labels[:, 1]
+    )
+    score_random_angle = silhouette_score(
+        random_sample_representations, random_sample_labels[:, 2]
+    )
 
     # Write silhouette scores to a text file
     score_file_path = plot_folder / "silhouette_scores.txt"
@@ -167,6 +173,7 @@ def evaluate_samples(representations, labels, data_title, plot_figs=False):
         f.write(f"Silhouette Scores for random_sample sample:\n")
         f.write(f"Class: {score_random_class:.4f}\n")
         f.write(f"Angle: {score_random_angle:.4f}\n")
+
 
 def create_sample(representations, labels, sample_size=5000, random=True):
     """
