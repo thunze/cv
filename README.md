@@ -67,7 +67,7 @@ uv sync
 
 For all of the below entrypoints, make sure you have prepared the working directories the individual entrypoints depend on to conform to the expected structure. The individual paths to these directories can be configured in `honeybee_learning/config.py`. For reference, as we had to create these directories ourselves to successfully run preprocessing, training and evaluation, you can find the working directories we used in `/scratch/cv-course2025/group7` on RAMSES. Refer to `honeybee_learning/config.py` for the exact paths we used.
 
-**TODO:** Rename these?
+The entrypoints below are designed to be run in the order they are listed here. However, if you already have the necessary files in place, you can also run individual entrypoints independently.
 
 #### `preprocessing`
 
@@ -86,3 +86,27 @@ uv run train --model simclr --wandb
 ```
 
 The hyperparameters used for training the models can be configured in the `honeybee_learning/simclr.py` and `honeybee_learning/vicreg.py` files, respectively.
+
+#### `precalculate-representations`
+
+The `precalculate-representations` entrypoint is used to precalculate the representations of the honeybee images using a trained model. This is useful to speed up the evaluation of the models, as it allows you to calculate the representations once and reuse them for different evaluation tasks. Like `train`, this entrypoint is a small CLI. It requires you to select which model checkpoint to use for the representation calculation and the model architecture the checkpoint was generated for (SimCLR or VICReg). For details on its usage, run `uv run precalculate-representations --help`. For example, to precalculate the representations of the honeybee images using a SimCLR model, you can run the following command:
+
+```shell
+uv run precalculate-representations --model simclr <path_to_checkpoint>
+```
+
+#### `test-linear`
+
+The `test-linear` entrypoint is used to evaluate the performance of a set of linear predictors trained in supervised fashion on the representations calculated by a self-supervised representation learning model with the labels of the honeybee attributes provided in the dataset as targets. This is a common evaluation method for self-supervised representation learning models, as it allows you to assess how well the representations learned by the model can be used for downstream tasks. This entrypoint is also a small CLI that requires you to specify the path to the serialized NumPy array file containing the representations to use for evaluation, as well as whether to log the training and testing metrics to Weights & Biases or not. For details on its usage, run `uv run test-linear --help`. For example, to run the evaluation on a specific set of representations and log the metrics to Weights & Biases, you can run the following command:
+
+```shell
+uv run test-linear --wandb <path_to_representations>
+```
+
+#### `visualize`
+
+The `visualize` entrypoint is used to visualize the representations calculated by a self-supervised representation learning model. It creates a set of figures that show the representations in a 3D space, allowing you to visually inspect the learned representations and how well they separate different honeybee attributes. This entrypoint is also a small CLI that requires you to specify the path to the serialized NumPy array file containing the representations to visualize. For details on its usage, run `uv run visualize --help`. For example, to visualize a specific set of representations, you can run the following command:
+
+```shell
+uv run visualize <path_to_representations>
+```
