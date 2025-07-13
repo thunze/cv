@@ -1,6 +1,9 @@
+"""Image transformations optionally used for data augmentation in the training."""
+
+from __future__ import annotations
+
 import random
 
-import torchvision.transforms
 import torchvision.transforms.functional as F
 from torchvision import transforms
 

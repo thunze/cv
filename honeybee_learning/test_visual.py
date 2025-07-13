@@ -162,15 +162,15 @@ def evaluate_samples(representations, labels, data_title, plot_figs=False):
     # Write silhouette scores to a text file
     score_file_path = plot_folder / "silhouette_scores.txt"
     with open(score_file_path, "w") as f:
-        f.write(f"Silhouette Scores for all representations:\n")
+        f.write("Silhouette Scores for all representations:\n")
         f.write(f"Bee ID: {score_full_id:.4f}\n")
         f.write(f"Class: {score_full_class:.4f}\n")
         f.write(f"Angle: {score_full_angle:.4f}\n\n")
 
-        f.write(f"Silhouette Scores for sample_id sample:\n")
+        f.write("Silhouette Scores for sample_id sample:\n")
         f.write(f"Bee ID: {score_sample_id:.4f}\n\n")
 
-        f.write(f"Silhouette Scores for random_sample sample:\n")
+        f.write("Silhouette Scores for random_sample sample:\n")
         f.write(f"Class: {score_random_class:.4f}\n")
         f.write(f"Angle: {score_random_angle:.4f}\n")
 
